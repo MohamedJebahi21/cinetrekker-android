@@ -1,0 +1,92 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build & Publish Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.x"
+          channel: stable
+          cache: true
+
+      - name: Create .env from secrets
+        run: |
+          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> .env
+          echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> .env
+          echo "API_BASE_URL=${{ secrets.API_BASE_URL }}" >> .env
+
+      - name: Decode keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/cinetrekker-upload-key.jks
+
+      - name: Create key.properties
+        run: |
+          cat > android/key.properties <<EOF
+          storePassword=${{ secrets.KEY_STORE_PASSWORD }}
+          keyPassword=${{ secrets.KEY_PASSWORD }}
+          keyAlias=${{ secrets.KEY_ALIAS }}
+          storeFile=../cinetrekker-upload-key.jks
+          EOF
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build release APK
+        run: flutter build apk --release
+
+      - name: Build release AAB
+        run: flutter build appbundle --release
+
+      - name: Rename artifacts
+        run: |
+          TAG=${{ github.ref_name }}
+          cp build/app/outputs/flutter-apk/app-release.apk cinetrekker-${TAG}.apk
+          cp build/app/outputs/bundle/release/app-release.aab cinetrekker-${TAG}.aab
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "CineTrekker ${{ github.ref_name }}"
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            cinetrekker-${{ github.ref_name }}.apk
+            cinetrekker-${{ github.ref_name }}.aab
+          body: |
+            ## CineTrekker ${{ github.ref_name }}
+
+            ### ⬇️ Download
+
+            | File | Platform |
+            |------|----------|
+            | `cinetrekker-${{ github.ref_name }}.apk` | Android (sideload) |
+            | `cinetrekker-${{ github.ref_name }}.aab` | Google Play Store |
+
+            ### Installing the APK
+            1. Download `cinetrekker-${{ github.ref_name }}.apk` to your Android device
+            2. Enable **Install unknown apps** in your device settings
+            3. Open the downloaded file and tap **Install**
+
+            > Requires Android 5.0+

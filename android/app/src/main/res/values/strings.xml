@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">CineTrekker</string>
+    <string name="shortcut_search_short">Search</string>
+    <string name="shortcut_search_long">Search Titles</string>
+    <string name="shortcut_trending_short">Trending</string>
+    <string name="shortcut_trending_long">Trending This Week</string>
+    <string name="shortcut_watchlist_short">Watchlist</string>
+    <string name="shortcut_watchlist_long">My Watchlist</string>
+    <string name="shortcut_discover_short">Discover</string>
+    <string name="shortcut_discover_long">Discover Movies &amp; Shows</string>
+</resources>
