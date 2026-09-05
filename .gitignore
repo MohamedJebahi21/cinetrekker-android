@@ -12,9 +12,11 @@ ios/Flutter/ephemeral/
 .flutter-plugins
 .flutter-plugins-dependencies
 .packages
-pubspec.lock
 .env
+dart_defines.env
 android/key.properties
 android/*.jks
 android/*.keystore
 audit-backup-*/
+.flutter-sdk/
+.local-bin/

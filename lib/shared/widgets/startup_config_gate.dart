@@ -53,7 +53,7 @@ class StartupConfigGate extends StatelessWidget {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        'Copy android/local.properties.example to android/local.properties and pass the CineTrekker env values when running Flutter.',
+                        'Copy .env.example to .env, fill in the values, then run with --dart-define-from-file=.env (config is not bundled into the APK).',
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ],

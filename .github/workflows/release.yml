@@ -30,12 +30,6 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Create .env from secrets
-        run: |
-          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> .env
-          echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> .env
-          echo "API_BASE_URL=${{ secrets.API_BASE_URL }}" >> .env
-
       - name: Decode keystore
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/cinetrekker-upload-key.jks
@@ -52,11 +46,46 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Resolve dart-defines
+        id: defines
+        env:
+          CINETREKKER_SUPABASE_URL: ${{ secrets.CINETREKKER_SUPABASE_URL || secrets.SUPABASE_URL }}
+          CINETREKKER_SUPABASE_ANON_KEY: ${{ secrets.CINETREKKER_SUPABASE_ANON_KEY || secrets.SUPABASE_ANON_KEY }}
+          CINETREKKER_API_BASE_URL: ${{ secrets.CINETREKKER_API_BASE_URL || secrets.API_BASE_URL }}
+          CINETREKKER_SENTRY_DSN: ${{ secrets.CINETREKKER_SENTRY_DSN }}
+        run: |
+          if [ -z "$CINETREKKER_SUPABASE_URL" ] || [ -z "$CINETREKKER_SUPABASE_ANON_KEY" ] || [ -z "$CINETREKKER_API_BASE_URL" ]; then
+            echo "Missing required CINETREKKER_* secrets (or legacy SUPABASE_*/API_BASE_URL fallbacks)."
+            exit 1
+          fi
+          {
+            echo "CINETREKKER_SUPABASE_URL=$CINETREKKER_SUPABASE_URL"
+            echo "CINETREKKER_SUPABASE_ANON_KEY=$CINETREKKER_SUPABASE_ANON_KEY"
+            echo "CINETREKKER_API_BASE_URL=$CINETREKKER_API_BASE_URL"
+            echo "CINETREKKER_SENTRY_DSN=$CINETREKKER_SENTRY_DSN"
+          } > dart_defines.env
+          echo "defines_file=dart_defines.env" >> "$GITHUB_OUTPUT"
+
       - name: Build release APK
-        run: flutter build apk --release
+        run: |
+          flutter build apk --release \
+            --obfuscate \
+            --split-debug-info=build/debug-info \
+            --dart-define-from-file=dart_defines.env
 
       - name: Build release AAB
-        run: flutter build appbundle --release
+        run: |
+          flutter build appbundle --release \
+            --obfuscate \
+            --split-debug-info=build/debug-info \
+            --dart-define-from-file=dart_defines.env
+
+      - name: Upload debug symbols
+        uses: actions/upload-artifact@v4
+        with:
+          name: dart-debug-info-${{ github.ref_name }}
+          path: build/debug-info
+          if-no-files-found: warn
 
       - name: Rename artifacts
         run: |
@@ -89,4 +118,4 @@ jobs:
             2. Enable **Install unknown apps** in your device settings
             3. Open the downloaded file and tap **Install**
 
-            > Requires Android 5.0+
+            > Requires Android 7.0 (API 24)+

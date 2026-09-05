@@ -1,18 +1,21 @@
 import 'package:flutter/foundation.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 
 class CrashReportingService {
   CrashReportingService._();
 
   static final CrashReportingService instance = CrashReportingService._();
 
-  void initialize() {
-    // Intercept Flutter framework errors
+  bool _sentryEnabled = false;
+
+  void initialize({bool sentryEnabled = false}) {
+    _sentryEnabled = sentryEnabled;
+
     FlutterError.onError = (details) {
       FlutterError.presentError(details);
       recordFlutterError(details);
     };
 
-    // Intercept asynchronous platform errors
     PlatformDispatcher.instance.onError = (error, stack) {
       recordError(error, stack, reason: 'Uncaught platform error');
       return true;
@@ -20,7 +23,6 @@ class CrashReportingService {
   }
 
   void recordError(dynamic error, StackTrace? stack, {String? reason}) {
-    // In development/debug mode, print clean reports. In production, send to Sentry/Firebase Crashlytics.
     if (kDebugMode) {
       debugPrint('[CrashReporter] Uncaught Error: $error');
       if (reason != null) {
@@ -29,6 +31,18 @@ class CrashReportingService {
       if (stack != null) {
         debugPrintStack(stackTrace: stack);
       }
+    }
+
+    if (_sentryEnabled) {
+      Sentry.captureException(
+        error,
+        stackTrace: stack,
+        withScope: (scope) {
+          if (reason != null && reason.isNotEmpty) {
+            scope.setTag('reason', reason);
+          }
+        },
+      );
     }
   }
 

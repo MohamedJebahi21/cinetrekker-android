@@ -18,8 +18,8 @@ android {
         applicationId = "com.cinetrekker.android"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = flutter.versionCode
+        versionName = flutter.versionName
     }
 
     val keystorePropertiesFile = rootProject.file("key.properties")
@@ -51,8 +51,12 @@ android {
                 throw GradleException("Missing android/key.properties. Release builds must be signed with a real Play App Signing upload key.")
             }
             signingConfig = signingConfigs.getByName("release")
-            isMinifyEnabled = false
-            isShrinkResources = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 

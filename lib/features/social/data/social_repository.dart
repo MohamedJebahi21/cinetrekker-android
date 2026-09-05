@@ -238,14 +238,27 @@ class SocialRepository {
 
   Future<void> deleteAccountData() async {
     if (!isSignedIn) return;
-    for (final table in const <String>[
+    await api.deleteRows(
       'comments',
+      equals: <String, dynamic>{'user_id': userId},
+    );
+    await api.deleteRows(
       'comment_likes',
+      equals: <String, dynamic>{'user_id': userId},
+    );
+    await api.deleteRows(
       'notifications',
+      equals: <String, dynamic>{'user_id': userId},
+    );
+    // user_follows uses follower_id / following_id, not user_id.
+    await api.deleteRows(
       'user_follows',
-    ]) {
-      await api.deleteRows(table, equals: <String, dynamic>{'user_id': userId});
-    }
+      equals: <String, dynamic>{'follower_id': userId},
+    );
+    await api.deleteRows(
+      'user_follows',
+      equals: <String, dynamic>{'following_id': userId},
+    );
   }
 }
 

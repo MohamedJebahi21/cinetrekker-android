@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="search"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_search_short"
+        android:shortcutLongLabel="@string/shortcut_search_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.cinetrekker.android"
+            android:targetClass="com.cinetrekker.android.MainActivity"
+            android:data="cinetrekker://search" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="trending"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_trending_short"
+        android:shortcutLongLabel="@string/shortcut_trending_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.cinetrekker.android"
+            android:targetClass="com.cinetrekker.android.MainActivity"
+            android:data="cinetrekker://trending" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="watchlist"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_watchlist_short"
+        android:shortcutLongLabel="@string/shortcut_watchlist_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.cinetrekker.android"
+            android:targetClass="com.cinetrekker.android.MainActivity"
+            android:data="cinetrekker://watchlist" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="discover"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_discover_short"
+        android:shortcutLongLabel="@string/shortcut_discover_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.cinetrekker.android"
+            android:targetClass="com.cinetrekker.android.MainActivity"
+            android:data="cinetrekker://discover" />
+    </shortcut>
+</shortcuts>

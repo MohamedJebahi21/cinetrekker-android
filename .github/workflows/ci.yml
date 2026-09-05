@@ -22,12 +22,6 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Create .env from secrets
-        run: |
-          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> .env
-          echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> .env
-          echo "API_BASE_URL=${{ secrets.API_BASE_URL }}" >> .env
-
       - name: Install dependencies
         run: flutter pub get
 
@@ -36,3 +30,8 @@ jobs:
 
       - name: Run tests
         run: flutter test --coverage
+        env:
+          # Prefer CINETREKKER_* secrets; fall back to legacy names during migration.
+          CINETREKKER_SUPABASE_URL: ${{ secrets.CINETREKKER_SUPABASE_URL || secrets.SUPABASE_URL }}
+          CINETREKKER_SUPABASE_ANON_KEY: ${{ secrets.CINETREKKER_SUPABASE_ANON_KEY || secrets.SUPABASE_ANON_KEY }}
+          CINETREKKER_API_BASE_URL: ${{ secrets.CINETREKKER_API_BASE_URL || secrets.API_BASE_URL }}

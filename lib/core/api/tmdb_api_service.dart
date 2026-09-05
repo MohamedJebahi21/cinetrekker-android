@@ -59,11 +59,12 @@ class TmdbApiService {
   }) async {
     try {
       if (Environment.apiBaseUrl.isEmpty) {
-        debugPrint('[TMDB] ERROR: API base URL is empty!');
         throw StateError('CINETREKKER_API_BASE_URL is not configured.');
       }
 
-      debugPrint('[TMDB] Fetching $endpoint from ${Environment.apiBaseUrl}');
+      if (kDebugMode) {
+        debugPrint('[TMDB] Fetching $endpoint from ${Environment.apiBaseUrl}');
+      }
 
       final response = await _dio.get<Map<String, dynamic>>(
         '/api/tmdb-proxy',
@@ -77,11 +78,12 @@ class TmdbApiService {
 
       final data = response.data;
       if (data == null) {
-        debugPrint('[TMDB] ERROR: Empty response for $endpoint');
         throw StateError('Empty TMDB proxy response.');
       }
 
-      debugPrint('[TMDB] OK $endpoint — ${data.keys.take(5)}');
+      if (kDebugMode) {
+        debugPrint('[TMDB] OK $endpoint — ${data.keys.take(5)}');
+      }
 
       // Save to cache asynchronously with 24 hour TTL
       LocalCacheManager.instance.write(
@@ -92,11 +94,15 @@ class TmdbApiService {
 
       return data;
     } catch (e) {
-      debugPrint('[TMDB] CATCH $endpoint — $e');
+      if (kDebugMode) {
+        debugPrint('[TMDB] CATCH $endpoint — $e');
+      }
       // Attempt cache recovery on failure
       final cachedData = await LocalCacheManager.instance.read(cacheKey);
       if (cachedData != null) {
-        debugPrint('[TMDB] CACHE HIT for $endpoint');
+        if (kDebugMode) {
+          debugPrint('[TMDB] CACHE HIT for $endpoint');
+        }
         return cachedData;
       }
       rethrow;

@@ -1,6 +1,9 @@
 import 'dart:convert';
+import 'dart:math';
 
+import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -16,19 +19,24 @@ final authControllerProvider =
 
 class AuthController extends AsyncNotifier<CineTrekkerAuthSession?> {
   static const _storage = FlutterSecureStorage();
+  static const _pkceVerifierKey = 'cinetrekker_oauth_code_verifier';
 
-  Dio get _dio => Dio(
-    BaseOptions(
-      baseUrl: '${Environment.supabaseUrl}/auth/v1',
-      connectTimeout: const Duration(seconds: 15),
-      receiveTimeout: const Duration(seconds: 20),
-      headers: <String, String>{
-        'apikey': Environment.supabaseAnonKey,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-    ),
-  );
+  Dio? _dioInstance;
+
+  Dio get _dio {
+    return _dioInstance ??= Dio(
+      BaseOptions(
+        baseUrl: '${Environment.supabaseUrl}/auth/v1',
+        connectTimeout: const Duration(seconds: 15),
+        receiveTimeout: const Duration(seconds: 20),
+        headers: <String, String>{
+          'apikey': Environment.supabaseAnonKey,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      ),
+    );
+  }
 
   @override
   Future<CineTrekkerAuthSession?> build() async {
@@ -102,11 +110,17 @@ class AuthController extends AsyncNotifier<CineTrekkerAuthSession?> {
   }
 
   Future<void> signInWithGoogle() async {
+    final verifier = _generateCodeVerifier();
+    final challenge = _codeChallenge(verifier);
+    await _storage.write(key: _pkceVerifierKey, value: verifier);
+
     final uri = Uri.parse('${Environment.supabaseUrl}/auth/v1/authorize')
         .replace(
           queryParameters: <String, String>{
             'provider': 'google',
             'redirect_to': 'cinetrekker://auth/callback',
+            'code_challenge': challenge,
+            'code_challenge_method': 'S256',
           },
         );
     final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -121,6 +135,24 @@ class AuthController extends AsyncNotifier<CineTrekkerAuthSession?> {
         if (uri.fragment.isNotEmpty) ...Uri.splitQueryString(uri.fragment),
         ...uri.queryParameters,
       };
+
+      final code = values['code'];
+      if (code != null && code.isNotEmpty) {
+        final verifier = await _storage.read(key: _pkceVerifierKey);
+        if (verifier == null || verifier.isEmpty) {
+          throw StateError('Missing PKCE verifier for Google sign-in.');
+        }
+        final payload = await _post('/token?grant_type=pkce', <String, dynamic>{
+          'auth_code': code,
+          'code_verifier': verifier,
+        });
+        await _storage.delete(key: _pkceVerifierKey);
+        final session = CineTrekkerAuthSession.fromApiJson(payload);
+        await _persist(session);
+        return session;
+      }
+
+      // Legacy implicit-flow fallback (fragment tokens).
       final accessToken = values['access_token'];
       final refreshToken = values['refresh_token'];
       if (accessToken == null ||
@@ -169,7 +201,29 @@ class AuthController extends AsyncNotifier<CineTrekkerAuthSession?> {
       }
     } finally {
       await _storage.delete(key: AppConstants.authSessionStorageKey);
+      await _storage.delete(key: _pkceVerifierKey);
       state = const AsyncData<CineTrekkerAuthSession?>(null);
+    }
+  }
+
+  /// Refreshes the current session using the stored refresh token.
+  /// Returns the new session, or null if refresh is not possible.
+  Future<CineTrekkerAuthSession?> refreshSession() async {
+    final current = state.valueOrNull;
+    final refreshToken = current?.refreshToken;
+    if (refreshToken == null || refreshToken.isEmpty) {
+      return null;
+    }
+    try {
+      final session = await _refresh(refreshToken);
+      state = AsyncData<CineTrekkerAuthSession?>(session);
+      return session;
+    } catch (error, stackTrace) {
+      if (kDebugMode) {
+        debugPrint('[Auth] Session refresh failed: $error');
+      }
+      state = AsyncError<CineTrekkerAuthSession?>(error, stackTrace);
+      return null;
     }
   }
 
@@ -208,8 +262,9 @@ class AuthController extends AsyncNotifier<CineTrekkerAuthSession?> {
     try {
       final response = await _dio.post<Map<String, dynamic>>(path, data: body);
       final data = response.data;
-      if (data == null)
+      if (data == null) {
         throw const FormatException('Empty authentication response.');
+      }
       return data;
     } on DioException catch (error) {
       final data = error.response?.data;
@@ -230,5 +285,16 @@ class AuthController extends AsyncNotifier<CineTrekkerAuthSession?> {
       key: AppConstants.authSessionStorageKey,
       value: jsonEncode(session.toStorageJson()),
     );
+  }
+
+  static String _generateCodeVerifier() {
+    final random = Random.secure();
+    final bytes = List<int>.generate(32, (_) => random.nextInt(256));
+    return base64UrlEncode(bytes).replaceAll('=', '');
+  }
+
+  static String _codeChallenge(String verifier) {
+    final digest = sha256.convert(utf8.encode(verifier));
+    return base64UrlEncode(digest.bytes).replaceAll('=', '');
   }
 }

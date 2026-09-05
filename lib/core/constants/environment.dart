@@ -1,26 +1,26 @@
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-
 class Environment {
-  static String get supabaseUrl =>
-      _envValue('CINETREKKER_SUPABASE_URL') ??
-      const String.fromEnvironment(
-        'CINETREKKER_SUPABASE_URL',
-        defaultValue: '',
-      );
+  static String get supabaseUrl => const String.fromEnvironment(
+    'CINETREKKER_SUPABASE_URL',
+    defaultValue: '',
+  );
 
-  static String get supabaseAnonKey =>
-      _envValue('CINETREKKER_SUPABASE_ANON_KEY') ??
-      const String.fromEnvironment(
-        'CINETREKKER_SUPABASE_ANON_KEY',
-        defaultValue: '',
-      );
+  static String get supabaseAnonKey => const String.fromEnvironment(
+    'CINETREKKER_SUPABASE_ANON_KEY',
+    defaultValue: '',
+  );
 
-  static String get apiBaseUrl =>
-      _envValue('CINETREKKER_API_BASE_URL') ??
-      const String.fromEnvironment(
-        'CINETREKKER_API_BASE_URL',
-        defaultValue: '',
-      );
+  static String get apiBaseUrl => const String.fromEnvironment(
+    'CINETREKKER_API_BASE_URL',
+    defaultValue: '',
+  );
+
+  /// Optional Sentry DSN. When empty, crashes are only logged locally.
+  static String get sentryDsn => const String.fromEnvironment(
+    'CINETREKKER_SENTRY_DSN',
+    defaultValue: '',
+  );
+
+  static bool get hasSentryConfig => sentryDsn.trim().isNotEmpty;
 
   static bool get hasSupabaseConfig =>
       _isConfiguredUrl(supabaseUrl) && supabaseAnonKey.isNotEmpty;
@@ -54,13 +54,5 @@ class Environment {
     }
 
     return uri.host.toLowerCase() != 'example.com';
-  }
-
-  static String? _envValue(String key) {
-    final value = dotenv.env[key];
-    if (value == null || value.trim().isEmpty) {
-      return null;
-    }
-    return value.trim();
   }
 }
