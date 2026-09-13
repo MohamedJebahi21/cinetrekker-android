@@ -1400,8 +1400,10 @@ class _TvSeasonAccordionState extends ConsumerState<_TvSeasonAccordion> {
                 ),
                 onPressed: () async {
                   if (followed) {
+                    Haptics.light();
                     await controller.unfollowShow(showId: widget.tvId);
                   } else {
+                    Haptics.follow();
                     await controller.followShow(
                       showId: widget.tvId,
                       showName: widget.details.displayTitle,
@@ -1433,7 +1435,10 @@ class _TvSeasonAccordionState extends ConsumerState<_TvSeasonAccordion> {
                         child: ChoiceChip(
                           label: Text(s.name),
                           selected: isSelected,
-                          onSelected: (_) => _loadSeason(s.seasonNumber),
+                          onSelected: (_) {
+                            Haptics.tabSwitch();
+                            _loadSeason(s.seasonNumber);
+                          },
                           selectedColor: theme.colorScheme.primary.withValues(
                             alpha: 0.2,
                           ),
@@ -1578,6 +1583,7 @@ class _TvSeasonAccordionState extends ConsumerState<_TvSeasonAccordion> {
                       activeColor: theme.colorScheme.primary,
                       onChanged: (val) async {
                         if (val == true) {
+                          Haptics.episodeProgress();
                           await controller.markEpisodeWatched(
                             showId: widget.tvId,
                             seasonNumber: ep.seasonNumber,
@@ -1586,6 +1592,7 @@ class _TvSeasonAccordionState extends ConsumerState<_TvSeasonAccordion> {
                             posterPath: widget.details.posterPath,
                           );
                         } else {
+                          Haptics.selection();
                           await controller.unmarkEpisodeWatched(
                             showId: widget.tvId,
                             seasonNumber: ep.seasonNumber,

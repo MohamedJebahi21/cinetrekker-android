@@ -9,6 +9,7 @@ import '../../../core/localization/locale_controller.dart';
 import '../../../core/models/media_models.dart';
 import '../../../shared/widgets/app_error_card.dart';
 import '../../../shared/widgets/app_cached_image.dart';
+import '../../../shared/widgets/bouncy_pressable.dart';
 import '../../watchlist/data/user_library_repository.dart';
 
 class FeatureParityScreen extends ConsumerStatefulWidget {
@@ -609,7 +610,7 @@ class _FeatureParityScreenState extends ConsumerState<FeatureParityScreen> {
               separatorBuilder: (_, __) => const SizedBox(width: 12),
               itemBuilder: (context, index) {
                 final show = _calendarShows[index];
-                return GestureDetector(
+                return BouncyPressable(
                   onTap: () => context.push('/details/tv/${show.id}'),
                   child: Container(
                     width: 120,
@@ -867,8 +868,12 @@ class _FeatureParityScreenState extends ConsumerState<FeatureParityScreen> {
             ? 'https://image.tmdb.org/t/p/w342${item.posterPath}'
             : null;
 
-        return GestureDetector(
-          onTap: () => context.push('/details/${item.mediaKind}/${item.id}'),
+        final heroTag = 'parity-${item.mediaKind}-${item.id}-$index';
+
+        return BouncyPressable(
+          onTap: () => context.push(
+            '/details/${item.mediaKind}/${item.id}?heroTag=${Uri.encodeComponent(heroTag)}',
+          ),
           child: Container(
             decoration: BoxDecoration(
               color: theme.cardTheme.color ?? theme.colorScheme.surface,
@@ -892,9 +897,12 @@ class _FeatureParityScreenState extends ConsumerState<FeatureParityScreen> {
                       fit: StackFit.expand,
                       children: [
                         if (posterUrl != null)
-                          AppCachedImage(
-                            imageUrl: posterUrl,
-                            fit: BoxFit.cover,
+                          Hero(
+                            tag: heroTag,
+                            child: AppCachedImage(
+                              imageUrl: posterUrl,
+                              fit: BoxFit.cover,
+                            ),
                           )
                         else
                           Container(
