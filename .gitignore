@@ -20,3 +20,5 @@ android/*.keystore
 audit-backup-*/
 .flutter-sdk/
 .local-bin/
+*.apk
+*.aab
