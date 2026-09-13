@@ -433,8 +433,12 @@ class _GridMediaCard extends ConsumerWidget {
         ? 'https://image.tmdb.org/t/p/w342${item.posterPath}'
         : null;
 
+    final heroTag = 'watchlist-grid-${item.mediaType}-${item.mediaId}';
+
     return BouncyPressable(
-      onTap: () => context.push('/details/${item.mediaType}/${item.mediaId}'),
+      onTap: () => context.push(
+        '/details/${item.mediaType}/${item.mediaId}?heroTag=${Uri.encodeComponent(heroTag)}',
+      ),
       child: Container(
         decoration: BoxDecoration(
           color: theme.cardTheme.color ?? theme.colorScheme.surface,
@@ -460,12 +464,15 @@ class _GridMediaCard extends ConsumerWidget {
                     fit: StackFit.expand,
                     children: [
                       if (posterUrl != null)
-                        AppCachedImage(
-                          imageUrl: posterUrl,
-                          fit: BoxFit.cover,
-                          errorIcon: item.mediaType == 'tv'
-                              ? Icons.tv_outlined
-                              : Icons.movie_outlined,
+                        Hero(
+                          tag: heroTag,
+                          child: AppCachedImage(
+                            imageUrl: posterUrl,
+                            fit: BoxFit.cover,
+                            errorIcon: item.mediaType == 'tv'
+                                ? Icons.tv_outlined
+                                : Icons.movie_outlined,
+                          ),
                         )
                       else
                         Center(
@@ -570,8 +577,12 @@ class _ListMediaCard extends ConsumerWidget {
         ? 'https://image.tmdb.org/t/p/w185${item.posterPath}'
         : null;
 
+    final heroTag = 'watchlist-list-${item.mediaType}-${item.mediaId}';
+
     return BouncyPressable(
-      onTap: () => context.push('/details/${item.mediaType}/${item.mediaId}'),
+      onTap: () => context.push(
+        '/details/${item.mediaType}/${item.mediaId}?heroTag=${Uri.encodeComponent(heroTag)}',
+      ),
       child: Container(
         decoration: BoxDecoration(
           color: theme.cardTheme.color ?? theme.colorScheme.surface,
@@ -596,12 +607,15 @@ class _ListMediaCard extends ConsumerWidget {
                     height: 78,
                     color: theme.colorScheme.surfaceContainerHighest,
                     child: posterUrl != null
-                        ? AppCachedImage(
-                            imageUrl: posterUrl,
-                            fit: BoxFit.cover,
-                            errorIcon: item.mediaType == 'tv'
-                                ? Icons.tv_outlined
-                                : Icons.movie_outlined,
+                        ? Hero(
+                            tag: heroTag,
+                            child: AppCachedImage(
+                              imageUrl: posterUrl,
+                              fit: BoxFit.cover,
+                              errorIcon: item.mediaType == 'tv'
+                                  ? Icons.tv_outlined
+                                  : Icons.movie_outlined,
+                            ),
                           )
                         : Icon(
                             item.mediaType == 'tv'

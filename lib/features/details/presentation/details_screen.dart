@@ -838,10 +838,19 @@ class _ActionBar extends ConsumerWidget {
           // Watchlist Button
           Expanded(
             child: FilledButton.icon(
-              onPressed: () async {
+              onPressed: () {
+                final messenger = ScaffoldMessenger.of(context);
+                messenger.hideCurrentSnackBar();
                 if (isWatchlist) {
                   Haptics.removeFromWatchlist();
-                  await ref
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text('Removed "${details.displayTitle}" from Watchlist'),
+                      duration: const Duration(seconds: 2),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                  ref
                       .read(watchlistControllerProvider.notifier)
                       .removeFromWatchlist(
                         mediaId: mediaId,
@@ -849,7 +858,14 @@ class _ActionBar extends ConsumerWidget {
                       );
                 } else {
                   Haptics.addToWatchlist();
-                  await ref
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text('Added "${details.displayTitle}" to Watchlist'),
+                      duration: const Duration(seconds: 2),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                  ref
                       .read(watchlistControllerProvider.notifier)
                       .addToWatchlist(
                         mediaId: mediaId,
@@ -942,10 +958,26 @@ class _ActionBar extends ConsumerWidget {
           // Favorite Heart Button with spring bounce
           BouncyPressable(
             onTap: () {
+              final messenger = ScaffoldMessenger.of(context);
+              messenger.hideCurrentSnackBar();
               if (isFavorite) {
                 Haptics.unfavorite();
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Text('Removed "${details.displayTitle}" from Favorites'),
+                    duration: const Duration(seconds: 2),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
               } else {
                 Haptics.favorite();
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Text('Saved "${details.displayTitle}" to Favorites ❤️'),
+                    duration: const Duration(seconds: 2),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
               }
               ref
                   .read(profileControllerProvider.notifier)
@@ -1048,6 +1080,19 @@ class _ActionBar extends ConsumerWidget {
                         );
                     if (dialogCtx.mounted) {
                       Navigator.of(dialogCtx).pop();
+                    }
+                    if (context.mounted) {
+                      final messenger = ScaffoldMessenger.of(context);
+                      messenger.hideCurrentSnackBar();
+                      messenger.showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Marked "${details.displayTitle}" as watched (${rating.toStringAsFixed(1)} ★)',
+                          ),
+                          duration: const Duration(seconds: 2),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
                     }
                   },
                   child: const Text('Save'),
