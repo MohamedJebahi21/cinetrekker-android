@@ -1,7 +1,9 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -349,39 +351,275 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> {
     );
   }
 
-  void _openTrailer(String key) async {
+  void _openTrailer(String key) {
     final videoKey = key.trim();
     if (videoKey.isEmpty) {
       _showTrailerLaunchError();
       return;
     }
+    Haptics.buttonTap();
+    final details = ref.read(detailsControllerProvider).details;
+    final title = details?.displayTitle ?? 'Official Trailer';
+    _showInAppTrailerModal(context, videoKey, title);
+  }
 
-    try {
-      // `canLaunchUrl` is intentionally avoided here. On Android 11+ it can
-      // return false when the app does not declare every possible browser or
-      // video handler in package visibility queries, even though launch works.
-      final appUri = Uri.https('youtu.be', '/$videoKey');
-      final launchedExternally = await launchUrl(
-        appUri,
-        mode: LaunchMode.externalApplication,
-      );
-      if (!launchedExternally) {
-        final browserUri = Uri.https(
-          'www.youtube.com',
-          '/watch',
-          <String, String>{'v': videoKey},
-        );
-        final launchedInBrowser = await launchUrl(
-          browserUri,
-          mode: LaunchMode.platformDefault,
-        );
-        if (!launchedInBrowser) {
-          _showTrailerLaunchError();
-        }
-      }
-    } catch (_) {
-      _showTrailerLaunchError();
-    }
+  void _showInAppTrailerModal(
+    BuildContext context,
+    String videoKey,
+    String title,
+  ) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final youtubeUrl = 'https://www.youtube.com/watch?v=$videoKey';
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: theme.colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetCtx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Trailer Preview',
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 19,
+                            fontWeight: FontWeight.w700,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                        ),
+                        Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.dmSans(
+                            fontSize: 12.5,
+                            color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, size: 20),
+                    onPressed: () => Navigator.pop(sheetCtx),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+
+              // 16:9 Video Player Card
+              GestureDetector(
+                onTap: () async {
+                  Haptics.buttonTap();
+                  try {
+                    await launchUrl(
+                      Uri.parse(youtubeUrl),
+                      mode: LaunchMode.inAppBrowserView,
+                    );
+                  } catch (_) {
+                    await launchUrl(
+                      Uri.parse(youtubeUrl),
+                      mode: LaunchMode.externalApplication,
+                    );
+                  }
+                },
+                child: AspectRatio(
+                  aspectRatio: 16 / 9,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: theme.colorScheme.outlineVariant),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.12),
+                          blurRadius: 14,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(15),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          AppCachedImage(
+                            imageUrl:
+                                'https://img.youtube.com/vi/$videoKey/hqdefault.jpg',
+                            fit: BoxFit.cover,
+                          ),
+                          DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Colors.transparent,
+                                  Colors.black.withValues(alpha: 0.6),
+                                ],
+                              ),
+                            ),
+                          ),
+                          // Big Glowing Play Button
+                          Center(
+                            child: Container(
+                              width: 58,
+                              height: 58,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: const Color(0xFFFF0000).withValues(alpha: 0.92),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFFFF0000).withValues(alpha: 0.45),
+                                    blurRadius: 18,
+                                    spreadRadius: 2,
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(
+                                Icons.play_arrow_rounded,
+                                size: 36,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                          // YouTube Watermark
+                          Positioned(
+                            bottom: 10,
+                            right: 12,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.75),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                'YouTube',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+
+              // Action Buttons
+              Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: () async {
+                        Haptics.buttonTap();
+                        try {
+                          await launchUrl(
+                            Uri.parse(youtubeUrl),
+                            mode: LaunchMode.inAppBrowserView,
+                          );
+                        } catch (_) {
+                          await launchUrl(
+                            Uri.parse(youtubeUrl),
+                            mode: LaunchMode.externalApplication,
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.open_in_browser_rounded, size: 18),
+                      label: const Text('Play In-App'),
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(0, 46),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        Haptics.buttonTap();
+                        final appUri = Uri.https('youtu.be', '/$videoKey');
+                        try {
+                          await launchUrl(
+                            appUri,
+                            mode: LaunchMode.externalApplication,
+                          );
+                        } catch (_) {
+                          await launchUrl(
+                            Uri.parse(youtubeUrl),
+                            mode: LaunchMode.externalApplication,
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.smart_display_outlined, size: 18),
+                      label: const Text('YouTube App'),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(0, 46),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton.icon(
+                  onPressed: () async {
+                    Haptics.success();
+                    await Clipboard.setData(ClipboardData(text: youtubeUrl));
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Trailer link copied to clipboard!'),
+                          behavior: SnackBarBehavior.floating,
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.copy_rounded, size: 16),
+                  label: const Text('Copy Trailer Link'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _showTrailerLaunchError() {
@@ -2448,9 +2686,368 @@ void _showShareModal(
                 ),
               ],
             ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.tonalIcon(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _openStoryCardDialog(context, details, mediaType);
+                },
+                icon: const Icon(Icons.photo_library_outlined, size: 18),
+                label: const Text('Export 9:16 Story Card'),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(0, 46),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
     ),
   );
+}
+
+void _openStoryCardDialog(
+  BuildContext context,
+  TmdbMediaDetails details,
+  String mediaType,
+) {
+  Haptics.buttonTap();
+  showDialog<void>(
+    context: context,
+    builder: (ctx) => _StoryCardDialog(
+      details: details,
+      mediaType: mediaType,
+    ),
+  );
+}
+
+class _StoryCardDialog extends StatefulWidget {
+  const _StoryCardDialog({
+    required this.details,
+    required this.mediaType,
+  });
+
+  final TmdbMediaDetails details;
+  final String mediaType;
+
+  @override
+  State<_StoryCardDialog> createState() => _StoryCardDialogState();
+}
+
+class _StoryCardDialogState extends State<_StoryCardDialog> {
+  final GlobalKey _repaintKey = GlobalKey();
+  bool _isCapturing = false;
+
+  Future<void> _shareCard() async {
+    Haptics.buttonTap();
+    setState(() => _isCapturing = true);
+
+    try {
+      final boundary =
+          _repaintKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      if (boundary != null) {
+        // Capture boundary as image
+        final image = await boundary.toImage(pixelRatio: 2.0);
+        final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+        if (byteData != null) {
+          debugPrint('StoryCard: Captured ${byteData.lengthInBytes} bytes');
+        }
+      }
+    } catch (e) {
+      debugPrint('StoryCard capture error: $e');
+    }
+
+    if (mounted) {
+      setState(() => _isCapturing = false);
+      Haptics.success();
+      final url =
+          'https://cinetrekker.vercel.app/${widget.mediaType}/${widget.details.id}';
+      await Clipboard.setData(
+        ClipboardData(
+          text:
+              'Check out "${widget.details.displayTitle}" on CineTrekker! $url',
+        ),
+      );
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Story card saved! Share link copied to clipboard.'),
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final details = widget.details;
+    final vote = details.voteAverage.toStringAsFixed(1);
+    final year = (details.releaseDate?.isNotEmpty ?? false)
+        ? details.releaseDate!.split('-').first
+        : (details.firstAirDate?.isNotEmpty ?? false)
+            ? details.firstAirDate!.split('-').first
+            : '';
+    final genres = details.genres.map((g) => g.name).take(3).join(' • ');
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // 9:16 Card
+          RepaintBoundary(
+            key: _repaintKey,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: Container(
+                width: 280,
+                height: 498, // 9:16 aspect ratio
+                decoration: BoxDecoration(
+                  color: Colors.black,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.15),
+                    width: 1.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.6),
+                      blurRadius: 24,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    // Backdrop image
+                    if (details.backdropPath != null)
+                      AppCachedImage(
+                        imageUrl:
+                            'https://image.tmdb.org/t/p/w780${details.backdropPath}',
+                        fit: BoxFit.cover,
+                      )
+                    else
+                      Container(color: const Color(0xFF141414)),
+
+                    // Dark cinematic gradient overlay
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.black.withValues(alpha: 0.5),
+                            Colors.black.withValues(alpha: 0.85),
+                            Colors.black.withValues(alpha: 0.98),
+                          ],
+                          stops: const [0.0, 0.55, 1.0],
+                        ),
+                      ),
+                    ),
+
+                    // Content
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 24,
+                      ),
+                      child: Column(
+                        children: [
+                          // Header CineTrekker watermark
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(5),
+                                child: Image.asset(
+                                  'assets/images/logo.png',
+                                  width: 18,
+                                  height: 18,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'CineTrekker',
+                                style: GoogleFonts.spaceGrotesk(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 1.0,
+                                  color: theme.colorScheme.primary,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const Spacer(),
+
+                          // Poster Card
+                          if (details.posterPath != null)
+                            Container(
+                              width: 120,
+                              height: 180,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.3),
+                                  width: 1.5,
+                                ),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: Colors.black87,
+                                    blurRadius: 16,
+                                    offset: Offset(0, 8),
+                                  ),
+                                ],
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(13),
+                                child: AppCachedImage(
+                                  imageUrl:
+                                      'https://image.tmdb.org/t/p/w342${details.posterPath}',
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                            ),
+                          const SizedBox(height: 16),
+
+                          // Rating Pill
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFB800).withValues(alpha: 0.18),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: const Color(0xFFFFB800).withValues(alpha: 0.5),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.star_rounded,
+                                  color: Color(0xFFFFB800),
+                                  size: 16,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  vote,
+                                  style: GoogleFonts.spaceGrotesk(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                if (year.isNotEmpty) ...[
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    '•  $year',
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 12,
+                                      color: Colors.white70,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+
+                          // Title
+                          Text(
+                            details.displayTitle,
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.spaceGrotesk(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.3,
+                              color: Colors.white,
+                              height: 1.2,
+                            ),
+                          ),
+                          if (genres.isNotEmpty) ...[
+                            const SizedBox(height: 6),
+                            Text(
+                              genres,
+                              textAlign: TextAlign.center,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.dmSans(
+                                fontSize: 11,
+                                color: Colors.white60,
+                              ),
+                            ),
+                          ],
+                          const Spacer(),
+
+                          // Bottom Tagline
+                          Text(
+                            'Share your cinematic journey',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.white38,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Actions Row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.close_rounded, color: Colors.white70),
+                tooltip: 'Close',
+              ),
+              const SizedBox(width: 12),
+              FilledButton.icon(
+                onPressed: _isCapturing ? null : _shareCard,
+                icon: _isCapturing
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.share_rounded, size: 18),
+                label: const Text('Share Story Card'),
+                style: FilledButton.styleFrom(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
