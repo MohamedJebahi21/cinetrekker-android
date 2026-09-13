@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/supabase_rest_api.dart';
 import '../../../core/auth/auth_controller.dart';
 import '../../../core/models/media_models.dart';
+import '../../../core/offline/offline_mutation_queue.dart';
 import '../../../core/storage/local_media_list_storage.dart';
 
 class UserLibraryRepository {
@@ -19,6 +22,70 @@ class UserLibraryRepository {
   final String? _userId;
 
   bool get _isSignedIn => _userId != null && _userId.isNotEmpty;
+
+  Future<void> _flushMutationQueue() async {
+    if (!_isSignedIn) return;
+    final queue = await OfflineMutationQueue.instance.getQueue();
+    if (queue.isEmpty) return;
+
+    for (final mutation in queue) {
+      try {
+        switch (mutation.type) {
+          case OfflineMutationType.addToWatchlist:
+            final p = mutation.payload;
+            await _supabaseRestApi.upsertRow('user_watchlist', <String, dynamic>{
+              'user_id': _userId,
+              'media_id': p['media_id'],
+              'media_type': p['media_type'],
+              'added_at': p['added_at'],
+              if (p['title'] != null) 'title': p['title'],
+              if (p['poster_path'] != null) 'poster_path': p['poster_path'],
+              if (p['backdrop_path'] != null) 'backdrop_path': p['backdrop_path'],
+              if (p['vote_average'] != null) 'vote_average': p['vote_average'],
+              if (p['release_date'] != null) 'release_date': p['release_date'],
+            }, onConflict: 'user_id,media_id,media_type');
+            break;
+          case OfflineMutationType.removeFromWatchlist:
+            final p = mutation.payload;
+            await _supabaseRestApi.deleteRows('user_watchlist', equals: <String, dynamic>{
+              'user_id': _userId,
+              'media_id': p['media_id'],
+              'media_type': p['media_type'],
+            });
+            break;
+          case OfflineMutationType.addToWatched:
+            final p = mutation.payload;
+            await _supabaseRestApi.upsertRow('user_watched', <String, dynamic>{
+              'user_id': _userId,
+              'media_id': p['media_id'],
+              'media_type': p['media_type'],
+              if (p['rating'] != null) 'rating': p['rating'],
+              if (p['note'] != null) 'note': p['note'],
+              if (p['status'] != null) 'status': p['status'],
+              if (p['watched_at'] != null) 'watched_at': p['watched_at'],
+              if (p['title'] != null) 'title': p['title'],
+              if (p['poster_path'] != null) 'poster_path': p['poster_path'],
+              if (p['backdrop_path'] != null) 'backdrop_path': p['backdrop_path'],
+              if (p['vote_average'] != null) 'vote_average': p['vote_average'],
+              if (p['release_date'] != null) 'release_date': p['release_date'],
+            }, onConflict: 'user_id,media_id,media_type');
+            break;
+          case OfflineMutationType.removeFromWatched:
+            final p = mutation.payload;
+            await _supabaseRestApi.deleteRows('user_watched', equals: <String, dynamic>{
+              'user_id': _userId,
+              'media_id': p['media_id'],
+              'media_type': p['media_type'],
+            });
+            break;
+        }
+        await OfflineMutationQueue.instance.remove(mutation.id);
+      } catch (_) {
+        // Stop flushing on error (likely offline or network glitch)
+        break;
+      }
+    }
+  }
 
   Future<List<UserMediaItem>> getWatchlist() async {
     if (!_isSignedIn) {
@@ -44,6 +111,7 @@ class UserLibraryRepository {
           )
           .toList(growable: false);
       await _localStorage.writeList(_watchlistCacheKey, items);
+      unawaited(_flushMutationQueue());
       return items;
     } catch (_) {
       return _localStorage.readList(_watchlistCacheKey);
@@ -78,6 +146,7 @@ class UserLibraryRepository {
           )
           .toList(growable: false);
       await _localStorage.writeList(_watchedCacheKey, items);
+      unawaited(_flushMutationQueue());
       return items;
     } catch (_) {
       return _localStorage.readList(_watchedCacheKey);
@@ -106,52 +175,78 @@ class UserLibraryRepository {
       releaseDate: releaseDate,
     );
 
-    if (!_isSignedIn) {
-      final next = [...await _localStorage.readList(_guestWatchlistKey)]
-        ..removeWhere(
-          (existing) =>
-              existing.mediaId == mediaId && existing.mediaType == mediaType,
-        )
-        ..add(item);
-      await _localStorage.writeList(_guestWatchlistKey, next);
-      return;
-    }
+    final cacheKey = _isSignedIn ? _watchlistCacheKey : _guestWatchlistKey;
+    final next = [...await _localStorage.readList(cacheKey)]
+      ..removeWhere(
+        (existing) =>
+            existing.mediaId == mediaId && existing.mediaType == mediaType,
+      )
+      ..add(item);
+    await _localStorage.writeList(cacheKey, next);
 
-    await _supabaseRestApi.upsertRow('user_watchlist', <String, dynamic>{
-      'user_id': _userId,
-      'media_id': mediaId,
-      'media_type': mediaType,
-      'added_at': item.addedAt,
-      if (title != null) 'title': title,
-      if (posterPath != null) 'poster_path': posterPath,
-      if (backdropPath != null) 'backdrop_path': backdropPath,
-      if (voteAverage != null) 'vote_average': voteAverage,
-      if (releaseDate != null) 'release_date': releaseDate,
-    }, onConflict: 'user_id,media_id,media_type');
+    if (!_isSignedIn) return;
+
+    try {
+      await _supabaseRestApi.upsertRow('user_watchlist', <String, dynamic>{
+        'user_id': _userId,
+        'media_id': mediaId,
+        'media_type': mediaType,
+        'added_at': item.addedAt,
+        if (title != null) 'title': title,
+        if (posterPath != null) 'poster_path': posterPath,
+        if (backdropPath != null) 'backdrop_path': backdropPath,
+        if (voteAverage != null) 'vote_average': voteAverage,
+        if (releaseDate != null) 'release_date': releaseDate,
+      }, onConflict: 'user_id,media_id,media_type');
+    } catch (_) {
+      await OfflineMutationQueue.instance.enqueue(
+        OfflineMutationType.addToWatchlist,
+        <String, dynamic>{
+          'media_id': mediaId,
+          'media_type': mediaType,
+          'added_at': item.addedAt,
+          if (title != null) 'title': title,
+          if (posterPath != null) 'poster_path': posterPath,
+          if (backdropPath != null) 'backdrop_path': backdropPath,
+          if (voteAverage != null) 'vote_average': voteAverage,
+          if (releaseDate != null) 'release_date': releaseDate,
+        },
+      );
+    }
   }
 
   Future<void> removeFromWatchlist({
     required int mediaId,
     required String mediaType,
   }) async {
-    if (!_isSignedIn) {
-      final next = [...await _localStorage.readList(_guestWatchlistKey)]
-        ..removeWhere(
-          (existing) =>
-              existing.mediaId == mediaId && existing.mediaType == mediaType,
-        );
-      await _localStorage.writeList(_guestWatchlistKey, next);
-      return;
-    }
+    final cacheKey = _isSignedIn ? _watchlistCacheKey : _guestWatchlistKey;
+    final next = [...await _localStorage.readList(cacheKey)]
+      ..removeWhere(
+        (existing) =>
+            existing.mediaId == mediaId && existing.mediaType == mediaType,
+      );
+    await _localStorage.writeList(cacheKey, next);
 
-    await _supabaseRestApi.deleteRows(
-      'user_watchlist',
-      equals: <String, dynamic>{
-        'user_id': _userId,
-        'media_id': mediaId,
-        'media_type': mediaType,
-      },
-    );
+    if (!_isSignedIn) return;
+
+    try {
+      await _supabaseRestApi.deleteRows(
+        'user_watchlist',
+        equals: <String, dynamic>{
+          'user_id': _userId,
+          'media_id': mediaId,
+          'media_type': mediaType,
+        },
+      );
+    } catch (_) {
+      await OfflineMutationQueue.instance.enqueue(
+        OfflineMutationType.removeFromWatchlist,
+        <String, dynamic>{
+          'media_id': mediaId,
+          'media_type': mediaType,
+        },
+      );
+    }
   }
 
   Future<void> addToWatched({
@@ -183,31 +278,50 @@ class UserLibraryRepository {
       releaseDate: releaseDate,
     );
 
-    if (!_isSignedIn) {
-      final next = [...await _localStorage.readList(_guestWatchedKey)]
-        ..removeWhere(
-          (existing) =>
-              existing.mediaId == mediaId && existing.mediaType == mediaType,
-        )
-        ..add(item);
-      await _localStorage.writeList(_guestWatchedKey, next);
-      return;
-    }
+    final cacheKey = _isSignedIn ? _watchedCacheKey : _guestWatchedKey;
+    final next = [...await _localStorage.readList(cacheKey)]
+      ..removeWhere(
+        (existing) =>
+            existing.mediaId == mediaId && existing.mediaType == mediaType,
+      )
+      ..add(item);
+    await _localStorage.writeList(cacheKey, next);
 
-    await _supabaseRestApi.upsertRow('user_watched', <String, dynamic>{
-      'user_id': _userId,
-      'media_id': mediaId,
-      'media_type': mediaType,
-      'rating': rating,
-      'note': note,
-      'status': status ?? 'completed',
-      'watched_at': item.watchedAt,
-      if (title != null) 'title': title,
-      if (posterPath != null) 'poster_path': posterPath,
-      if (backdropPath != null) 'backdrop_path': backdropPath,
-      if (voteAverage != null) 'vote_average': voteAverage,
-      if (releaseDate != null) 'release_date': releaseDate,
-    }, onConflict: 'user_id,media_id,media_type');
+    if (!_isSignedIn) return;
+
+    try {
+      await _supabaseRestApi.upsertRow('user_watched', <String, dynamic>{
+        'user_id': _userId,
+        'media_id': mediaId,
+        'media_type': mediaType,
+        'rating': rating,
+        'note': note,
+        'status': status ?? 'completed',
+        'watched_at': item.watchedAt,
+        if (title != null) 'title': title,
+        if (posterPath != null) 'poster_path': posterPath,
+        if (backdropPath != null) 'backdrop_path': backdropPath,
+        if (voteAverage != null) 'vote_average': voteAverage,
+        if (releaseDate != null) 'release_date': releaseDate,
+      }, onConflict: 'user_id,media_id,media_type');
+    } catch (_) {
+      await OfflineMutationQueue.instance.enqueue(
+        OfflineMutationType.addToWatched,
+        <String, dynamic>{
+          'media_id': mediaId,
+          'media_type': mediaType,
+          'rating': rating,
+          'note': note,
+          'status': status ?? 'completed',
+          'watched_at': item.watchedAt,
+          if (title != null) 'title': title,
+          if (posterPath != null) 'poster_path': posterPath,
+          if (backdropPath != null) 'backdrop_path': backdropPath,
+          if (voteAverage != null) 'vote_average': voteAverage,
+          if (releaseDate != null) 'release_date': releaseDate,
+        },
+      );
+    }
   }
 
   Future<void> updateWatched({
@@ -259,24 +373,34 @@ class UserLibraryRepository {
     required int mediaId,
     required String mediaType,
   }) async {
-    if (!_isSignedIn) {
-      final next = [...await _localStorage.readList(_guestWatchedKey)]
-        ..removeWhere(
-          (existing) =>
-              existing.mediaId == mediaId && existing.mediaType == mediaType,
-        );
-      await _localStorage.writeList(_guestWatchedKey, next);
-      return;
-    }
+    final cacheKey = _isSignedIn ? _watchedCacheKey : _guestWatchedKey;
+    final next = [...await _localStorage.readList(cacheKey)]
+      ..removeWhere(
+        (existing) =>
+            existing.mediaId == mediaId && existing.mediaType == mediaType,
+      );
+    await _localStorage.writeList(cacheKey, next);
 
-    await _supabaseRestApi.deleteRows(
-      'user_watched',
-      equals: <String, dynamic>{
-        'user_id': _userId,
-        'media_id': mediaId,
-        'media_type': mediaType,
-      },
-    );
+    if (!_isSignedIn) return;
+
+    try {
+      await _supabaseRestApi.deleteRows(
+        'user_watched',
+        equals: <String, dynamic>{
+          'user_id': _userId,
+          'media_id': mediaId,
+          'media_type': mediaType,
+        },
+      );
+    } catch (_) {
+      await OfflineMutationQueue.instance.enqueue(
+        OfflineMutationType.removeFromWatched,
+        <String, dynamic>{
+          'media_id': mediaId,
+          'media_type': mediaType,
+        },
+      );
+    }
   }
 
   Future<List<FollowedShowItem>> getFollowedShows() async {

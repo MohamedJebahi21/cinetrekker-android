@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../core/motion/haptic_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -30,6 +32,40 @@ class _WatchlistScreenState extends ConsumerState<WatchlistScreen> {
   String _mediaFilter = 'all'; // 'all' | 'movie' | 'tv'
   String _sortBy =
       'date_added'; // 'date_added' | 'rating' | 'release_date' | 'title'
+
+  // Phase 3.1 — Batch multi-select
+  bool _isSelecting = false;
+  final Set<String> _selectedKeys = {};
+
+  String _itemKey(UserMediaItem item) => '${item.mediaType}-${item.mediaId}';
+
+  void _toggleSelect(UserMediaItem item) {
+    Haptics.selection();
+    setState(() {
+      final key = _itemKey(item);
+      if (_selectedKeys.contains(key)) {
+        _selectedKeys.remove(key);
+        if (_selectedKeys.isEmpty) _isSelecting = false;
+      } else {
+        _selectedKeys.add(key);
+      }
+    });
+  }
+
+  void _enterSelectMode(UserMediaItem item) {
+    Haptics.selection();
+    setState(() {
+      _isSelecting = true;
+      _selectedKeys.add(_itemKey(item));
+    });
+  }
+
+  void _clearSelection() {
+    setState(() {
+      _isSelecting = false;
+      _selectedKeys.clear();
+    });
+  }
 
   @override
   void initState() {
@@ -99,36 +135,82 @@ class _WatchlistScreenState extends ConsumerState<WatchlistScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Library',
-          style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w700),
-        ),
-        actions: [
-          IconButton(
-            onPressed: () {
-              Haptics.toggleChange();
-              setState(() => _isGridView = !_isGridView);
-            },
-            icon: Icon(
-              _isGridView
-                  ? Icons.view_agenda_outlined
-                  : Icons.grid_view_rounded,
+      appBar: _isSelecting
+          ? AppBar(
+              leading: IconButton(
+                onPressed: _clearSelection,
+                icon: const Icon(Icons.close_rounded),
+              ),
+              title: Text(
+                '${_selectedKeys.length} selected',
+                style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w700),
+              ),
+              actions: [
+                IconButton(
+                  onPressed: () => _deleteSelected(filtered, state),
+                  icon: const Icon(Icons.delete_outline_rounded),
+                  tooltip: 'Remove selected',
+                ),
+                IconButton(
+                  onPressed: () => _exportSelected(filtered),
+                  icon: const Icon(Icons.share_outlined),
+                  tooltip: 'Export selected',
+                ),
+                PopupMenuButton<String>(
+                  onSelected: (value) {
+                    if (value == 'select_all') {
+                      setState(() {
+                        for (final item in filtered) {
+                          _selectedKeys.add(_itemKey(item));
+                        }
+                      });
+                    } else if (value == 'deselect_all') {
+                      _clearSelection();
+                    }
+                  },
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(
+                      value: 'select_all',
+                      child: Text('Select all'),
+                    ),
+                    PopupMenuItem(
+                      value: 'deselect_all',
+                      child: Text('Deselect all'),
+                    ),
+                  ],
+                ),
+              ],
+            )
+          : AppBar(
+              title: Text(
+                'Library',
+                style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w700),
+              ),
+              actions: [
+                IconButton(
+                  onPressed: () {
+                    Haptics.toggleChange();
+                    setState(() => _isGridView = !_isGridView);
+                  },
+                  icon: Icon(
+                    _isGridView
+                        ? Icons.view_agenda_outlined
+                        : Icons.grid_view_rounded,
+                  ),
+                  tooltip: _isGridView ? 'List view' : 'Grid view',
+                ),
+                IconButton(
+                  onPressed: () => _openSurprisePicker(context, state),
+                  icon: const Icon(Icons.casino_outlined),
+                  tooltip: 'Surprise Me',
+                ),
+                IconButton(
+                  onPressed: () => context.push('/tv-tracking'),
+                  icon: const Icon(Icons.tv_outlined),
+                  tooltip: 'TV tracking',
+                ),
+              ],
             ),
-            tooltip: _isGridView ? 'List view' : 'Grid view',
-          ),
-          IconButton(
-            onPressed: () => _openSurprisePicker(context, state),
-            icon: const Icon(Icons.casino_outlined),
-            tooltip: 'Surprise Me',
-          ),
-          IconButton(
-            onPressed: () => context.push('/tv-tracking'),
-            icon: const Icon(Icons.tv_outlined),
-            tooltip: 'TV tracking',
-          ),
-        ],
-      ),
       body: RefreshIndicator(
         color: theme.colorScheme.primary,
         onRefresh: () => ref.read(watchlistControllerProvider.notifier).load(),
@@ -356,6 +438,10 @@ class _WatchlistScreenState extends ConsumerState<WatchlistScreen> {
                   return _GridMediaCard(
                     item: item,
                     isWatchedTab: _tabIndex == 1,
+                    isSelecting: _isSelecting,
+                    isSelected: _selectedKeys.contains(_itemKey(item)),
+                    onLongPress: () => _enterSelectMode(item),
+                    onSelectTap: () => _toggleSelect(item),
                   );
                 },
               )
@@ -370,10 +456,206 @@ class _WatchlistScreenState extends ConsumerState<WatchlistScreen> {
                   return _ListMediaCard(
                     item: item,
                     isWatchedTab: _tabIndex == 1,
+                    isSelecting: _isSelecting,
+                    isSelected: _selectedKeys.contains(_itemKey(item)),
+                    onLongPress: () => _enterSelectMode(item),
+                    onSelectTap: () => _toggleSelect(item),
                   );
                 },
               ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _deleteSelected(
+    List<UserMediaItem> filtered,
+    WatchlistState state,
+  ) async {
+    final selectedItems = filtered
+        .where((item) => _selectedKeys.contains(_itemKey(item)))
+        .toList();
+    if (selectedItems.isEmpty) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(
+          'Remove ${selectedItems.length} title${selectedItems.length == 1 ? '' : 's'}?',
+          style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w700),
+        ),
+        content: const Text('This will remove them from the current list.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+    Haptics.success();
+    final notifier = ref.read(watchlistControllerProvider.notifier);
+    for (final item in selectedItems) {
+      if (_tabIndex == 1) {
+        await notifier.removeFromWatched(
+          mediaType: item.mediaType,
+          mediaId: item.mediaId,
+        );
+      } else {
+        await notifier.removeFromWatchlist(
+          mediaType: item.mediaType,
+          mediaId: item.mediaId,
+        );
+      }
+    }
+    _clearSelection();
+  }
+
+  Future<void> _exportSelected(List<UserMediaItem> filtered) async {
+    final selectedItems = filtered
+        .where((item) => _selectedKeys.contains(_itemKey(item)))
+        .toList();
+    if (selectedItems.isEmpty) return;
+    Haptics.buttonTap();
+
+    final theme = Theme.of(context);
+    final count = selectedItems.length;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetCtx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Export $count Title${count == 1 ? '' : 's'}',
+                style: GoogleFonts.spaceGrotesk(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Choose a format to copy your titles to clipboard:',
+                style: GoogleFonts.dmSans(
+                  fontSize: 13,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                ),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.table_chart_outlined,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+                title: Text(
+                  'CSV (Spreadsheet)',
+                  style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w600),
+                ),
+                subtitle: const Text('Comma-separated values with column headers'),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                onTap: () async {
+                  Navigator.of(sheetCtx).pop();
+                  final buf = StringBuffer();
+                  buf.writeln('Title,Type,Year,Rating,TMDB ID');
+                  for (final item in selectedItems) {
+                    final title = '"${item.displayTitle.replaceAll('"', '""')}"';
+                    final type = item.mediaType == 'tv' ? 'TV Series' : 'Movie';
+                    final year = item.year?.toString() ?? '';
+                    final rating =
+                        (item.rating ?? item.voteAverage ?? 0).toStringAsFixed(1);
+                    buf.writeln('$title,$type,$year,$rating,${item.mediaId}');
+                  }
+                  await Clipboard.setData(ClipboardData(text: buf.toString()));
+                  Haptics.success();
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Copied $count titles as CSV to clipboard'),
+                        behavior: SnackBarBehavior.floating,
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                    _clearSelection();
+                  }
+                },
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.data_object_rounded,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+                title: Text(
+                  'JSON Data',
+                  style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w600),
+                ),
+                subtitle: const Text('Structured JSON array for backup and tools'),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                onTap: () async {
+                  Navigator.of(sheetCtx).pop();
+                  final jsonList = selectedItems
+                      .map(
+                        (i) => <String, dynamic>{
+                          'tmdb_id': i.mediaId,
+                          'media_type': i.mediaType,
+                          'title': i.displayTitle,
+                          'year': i.year,
+                          'rating': i.rating ?? i.voteAverage,
+                          'added_at': i.addedAt,
+                        },
+                      )
+                      .toList();
+                  final jsonString =
+                      const JsonEncoder.withIndent('  ').convert(jsonList);
+                  await Clipboard.setData(ClipboardData(text: jsonString));
+                  Haptics.success();
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Copied $count titles as JSON to clipboard'),
+                        behavior: SnackBarBehavior.floating,
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                    _clearSelection();
+                  }
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -466,10 +748,21 @@ class _FilterChip extends StatelessWidget {
 }
 
 class _GridMediaCard extends ConsumerWidget {
-  const _GridMediaCard({required this.item, required this.isWatchedTab});
+  const _GridMediaCard({
+    required this.item,
+    required this.isWatchedTab,
+    this.isSelecting = false,
+    this.isSelected = false,
+    this.onLongPress,
+    this.onSelectTap,
+  });
 
   final UserMediaItem item;
   final bool isWatchedTab;
+  final bool isSelecting;
+  final bool isSelected;
+  final VoidCallback? onLongPress;
+  final VoidCallback? onSelectTap;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -481,127 +774,170 @@ class _GridMediaCard extends ConsumerWidget {
 
     final heroTag = 'watchlist-grid-${item.mediaType}-${item.mediaId}';
 
-    return BouncyPressable(
-      onTap: () => context.push(
-        '/details/${item.mediaType}/${item.mediaId}?heroTag=${Uri.encodeComponent(heroTag)}',
-      ),
-      child: Container(
-        decoration: BoxDecoration(
-          color: theme.cardTheme.color ?? theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: theme.colorScheme.outlineVariant),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
+    return GestureDetector(
+      onLongPress: isSelecting ? null : onLongPress,
+      child: BouncyPressable(
+        onTap: () {
+          if (isSelecting) {
+            onSelectTap?.call();
+          } else {
+            context.push(
+              '/details/${item.mediaType}/${item.mediaId}?heroTag=${Uri.encodeComponent(heroTag)}',
+            );
+          }
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          decoration: BoxDecoration(
+            color: theme.cardTheme.color ?? theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isSelected
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.outlineVariant,
+              width: isSelected ? 2 : 1,
             ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Container(
-                  color: theme.colorScheme.surfaceContainerHighest,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      if (posterUrl != null)
-                        Hero(
-                          tag: heroTag,
-                          child: AppCachedImage(
-                            imageUrl: posterUrl,
-                            fit: BoxFit.cover,
-                            errorIcon: item.mediaType == 'tv'
-                                ? Icons.tv_outlined
-                                : Icons.movie_outlined,
-                          ),
-                        )
-                      else
-                        Center(
-                          child: Icon(
-                            item.mediaType == 'tv'
-                                ? Icons.tv_outlined
-                                : Icons.movie_outlined,
-                            size: 36,
-                            color: theme.colorScheme.onSurface.withValues(
-                              alpha: 0.4,
+            boxShadow: [
+              BoxShadow(
+                color: isSelected
+                    ? theme.colorScheme.primary.withValues(alpha: 0.25)
+                    : Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
+                blurRadius: isSelected ? 12 : 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Container(
+                    color: theme.colorScheme.surfaceContainerHighest,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        if (posterUrl != null)
+                          Hero(
+                            tag: heroTag,
+                            child: AppCachedImage(
+                              imageUrl: posterUrl,
+                              fit: BoxFit.cover,
+                              errorIcon: item.mediaType == 'tv'
+                                  ? Icons.tv_outlined
+                                  : Icons.movie_outlined,
+                            ),
+                          )
+                        else
+                          Center(
+                            child: Icon(
+                              item.mediaType == 'tv'
+                                  ? Icons.tv_outlined
+                                  : Icons.movie_outlined,
+                              size: 36,
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.4,
+                              ),
                             ),
                           ),
-                        ),
-                      if ((item.rating != null && item.rating! > 0) ||
-                          (item.voteAverage != null && item.voteAverage! > 0))
-                        Positioned(
-                          top: 8,
-                          right: 8,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.75),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.star_rounded,
-                                  size: 12,
-                                  color: Color(0xFFFFC107),
+                        if (isSelecting)
+                          Positioned(
+                            top: 8,
+                            left: 8,
+                            child: Container(
+                              width: 26,
+                              height: 26,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: isSelected
+                                    ? theme.colorScheme.primary
+                                    : Colors.black.withValues(alpha: 0.6),
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 1.5,
                                 ),
-                                const SizedBox(width: 2),
-                                Text(
-                                  ((item.rating != null && item.rating! > 0)
-                                          ? item.rating!
-                                          : item.voteAverage!)
-                                      .toStringAsFixed(1),
-                                  style: GoogleFonts.dmSans(
-                                    fontSize: 10.5,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.white,
+                              ),
+                              child: isSelected
+                                  ? const Icon(
+                                      Icons.check_rounded,
+                                      size: 16,
+                                      color: Colors.white,
+                                    )
+                                  : null,
+                            ),
+                          ),
+                        if ((item.rating != null && item.rating! > 0) ||
+                            (item.voteAverage != null && item.voteAverage! > 0))
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.75),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.star_rounded,
+                                    size: 12,
+                                    color: Color(0xFFFFC107),
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    ((item.rating != null && item.rating! > 0)
+                                            ? item.rating!
+                                            : item.voteAverage!)
+                                        .toStringAsFixed(1),
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
+                      ],
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.displayTitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.onSurface,
                         ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${item.mediaType == 'tv' ? 'TV Series' : 'Movie'}${item.year != null ? ' · ${item.year}' : ''}',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 11,
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.55,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.displayTitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.spaceGrotesk(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: theme.colorScheme.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${item.mediaType == 'tv' ? 'TV Series' : 'Movie'}${item.year != null ? ' · ${item.year}' : ''}',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 11,
-                        color: theme.colorScheme.onSurface.withValues(
-                          alpha: 0.55,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -610,10 +946,21 @@ class _GridMediaCard extends ConsumerWidget {
 }
 
 class _ListMediaCard extends ConsumerWidget {
-  const _ListMediaCard({required this.item, required this.isWatchedTab});
+  const _ListMediaCard({
+    required this.item,
+    required this.isWatchedTab,
+    this.isSelecting = false,
+    this.isSelected = false,
+    this.onLongPress,
+    this.onSelectTap,
+  });
 
   final UserMediaItem item;
   final bool isWatchedTab;
+  final bool isSelecting;
+  final bool isSelected;
+  final VoidCallback? onLongPress;
+  final VoidCallback? onSelectTap;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -625,25 +972,41 @@ class _ListMediaCard extends ConsumerWidget {
 
     final heroTag = 'watchlist-list-${item.mediaType}-${item.mediaId}';
 
-    return BouncyPressable(
-      onTap: () => context.push(
-        '/details/${item.mediaType}/${item.mediaId}?heroTag=${Uri.encodeComponent(heroTag)}',
-      ),
-      child: Container(
-        decoration: BoxDecoration(
-          color: theme.cardTheme.color ?? theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: theme.colorScheme.outlineVariant),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
+    return GestureDetector(
+      onLongPress: isSelecting ? null : onLongPress,
+      child: BouncyPressable(
+        onTap: () {
+          if (isSelecting) {
+            onSelectTap?.call();
+          } else {
+            context.push(
+              '/details/${item.mediaType}/${item.mediaId}?heroTag=${Uri.encodeComponent(heroTag)}',
+            );
+          }
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          decoration: BoxDecoration(
+            color: theme.cardTheme.color ?? theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isSelected
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.outlineVariant,
+              width: isSelected ? 2 : 1,
             ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
+            boxShadow: [
+              BoxShadow(
+                color: isSelected
+                    ? theme.colorScheme.primary.withValues(alpha: 0.20)
+                    : Colors.black.withValues(alpha: isDark ? 0.20 : 0.04),
+                blurRadius: isSelected ? 12 : 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
             child: Row(
               children: [
                 ClipRRect(
@@ -727,35 +1090,64 @@ class _ListMediaCard extends ConsumerWidget {
                     ],
                   ),
                 ),
-                IconButton(
-                  onPressed: () async {
-                    if (isWatchedTab) {
-                      await ref
-                          .read(watchlistControllerProvider.notifier)
-                          .removeFromWatched(
-                            mediaType: item.mediaType,
-                            mediaId: item.mediaId,
-                          );
-                    } else {
-                      await ref
-                          .read(watchlistControllerProvider.notifier)
-                          .removeFromWatchlist(
-                            mediaType: item.mediaType,
-                            mediaId: item.mediaId,
-                          );
-                    }
-                  },
-                  icon: Icon(
-                    Icons.delete_outline_rounded,
-                    size: 20,
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
+                if (isSelecting)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 4),
+                    child: Container(
+                      width: 26,
+                      height: 26,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isSelected
+                            ? theme.colorScheme.primary
+                            : Colors.transparent,
+                        border: Border.all(
+                          color: isSelected
+                              ? theme.colorScheme.primary
+                              : theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                          width: 2,
+                        ),
+                      ),
+                      child: isSelected
+                          ? const Icon(
+                              Icons.check_rounded,
+                              size: 16,
+                              color: Colors.white,
+                            )
+                          : null,
+                    ),
+                  )
+                else
+                  IconButton(
+                    onPressed: () async {
+                      if (isWatchedTab) {
+                        await ref
+                            .read(watchlistControllerProvider.notifier)
+                            .removeFromWatched(
+                              mediaType: item.mediaType,
+                              mediaId: item.mediaId,
+                            );
+                      } else {
+                        await ref
+                            .read(watchlistControllerProvider.notifier)
+                            .removeFromWatchlist(
+                              mediaType: item.mediaType,
+                              mediaId: item.mediaId,
+                            );
+                      }
+                    },
+                    icon: Icon(
+                      Icons.delete_outline_rounded,
+                      size: 20,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
+                    ),
                   ),
-                ),
               ],
             ),
           ),
         ),
-      );
+      ),
+    );
   }
 }
 
