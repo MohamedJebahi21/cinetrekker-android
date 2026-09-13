@@ -68,16 +68,19 @@ class DiscoverController extends Notifier<DiscoverState> {
     String? language,
     int page = 1,
     bool append = false,
+    Map<String, String> params = const <String, String>{},
   }) async {
     final String selectedLanguage = language ?? ref.read(tmdbLanguageProvider);
     state = state.copyWith(mediaType: mediaType, isLoading: true, error: null);
+    final Map<String, String> effectiveParams =
+        params.isNotEmpty ? params : const <String, String>{'sort_by': 'popularity.desc'};
     try {
       final response = await ref
           .read(tmdbApiServiceProvider)
           .discover(
             mediaType: mediaType,
             language: selectedLanguage,
-            params: const <String, String>{'sort_by': 'popularity.desc'},
+            params: effectiveParams,
             page: page,
           );
       state = state.copyWith(

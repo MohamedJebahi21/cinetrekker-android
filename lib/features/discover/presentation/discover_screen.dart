@@ -23,12 +23,49 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
   final _scrollController = ScrollController();
   String _mediaType = 'movie';
 
+  // Filter state (Phase 2.3)
+  RangeValues _yearRange = const RangeValues(1970, 2026);
+  double _minRating = 0;
+  final Set<int> _selectedGenreIds = {};
+
+  Map<String, String> _buildFilterParams() {
+    final params = <String, String>{'sort_by': 'popularity.desc'};
+    if (_yearRange.start > 1970 || _yearRange.end < 2026) {
+      if (_mediaType == 'movie') {
+        params['primary_release_date.gte'] =
+            '${_yearRange.start.round()}-01-01';
+        params['primary_release_date.lte'] =
+            '${_yearRange.end.round()}-12-31';
+      } else {
+        params['first_air_date.gte'] = '${_yearRange.start.round()}-01-01';
+        params['first_air_date.lte'] = '${_yearRange.end.round()}-12-31';
+      }
+    }
+    if (_minRating > 0) {
+      params['vote_average.gte'] = _minRating.toStringAsFixed(1);
+      params['vote_count.gte'] = '50';
+    }
+    if (_selectedGenreIds.isNotEmpty) {
+      params['with_genres'] = _selectedGenreIds.join(',');
+    }
+    return params;
+  }
+
+  bool get _hasActiveFilters =>
+      _yearRange.start > 1970 ||
+      _yearRange.end < 2026 ||
+      _minRating > 0 ||
+      _selectedGenreIds.isNotEmpty;
+
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_maybeLoadMore);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(discoverControllerProvider.notifier).load(mediaType: _mediaType);
+      ref.read(discoverControllerProvider.notifier).load(
+            mediaType: _mediaType,
+            params: _buildFilterParams(),
+          );
     });
   }
 
@@ -58,7 +95,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
       if (previous == null || previous == next) return;
       ref
           .read(discoverControllerProvider.notifier)
-          .load(mediaType: _mediaType, language: next);
+          .load(mediaType: _mediaType, language: next, params: _buildFilterParams());
     });
 
     return Scaffold(
@@ -92,6 +129,18 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
             icon: const Icon(Icons.auto_awesome_rounded),
             tooltip: 'Surprise Me',
           ),
+          IconButton(
+            onPressed: () => _openFilterSheet(context),
+            icon: Badge(
+              isLabelVisible: _hasActiveFilters,
+              smallSize: 8,
+              child: Icon(
+                Icons.tune_rounded,
+                color: _hasActiveFilters ? theme.colorScheme.primary : null,
+              ),
+            ),
+            tooltip: 'Filter',
+          ),
         ],
       ),
       body: RefreshIndicator(
@@ -101,6 +150,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
             .load(
               mediaType: _mediaType,
               language: ref.read(tmdbLanguageProvider),
+              params: _buildFilterParams(),
             ),
         child: ListView(
           controller: _scrollController,
@@ -132,8 +182,9 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
                         ref
                             .read(discoverControllerProvider.notifier)
                             .load(
-                              mediaType: _mediaType,
+                              mediaType: type,
                               language: ref.read(tmdbLanguageProvider),
+                              params: _buildFilterParams(),
                             );
                       },
                       child: AnimatedContainer(
@@ -441,6 +492,47 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
       ),
     );
   }
+
+  Future<void> _openFilterSheet(BuildContext context) async {
+    Haptics.buttonTap();
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) => _DiscoverFilterSheet(
+        initialYearRange: _yearRange,
+        initialMinRating: _minRating,
+        initialGenreIds: Set<int>.from(_selectedGenreIds),
+        mediaType: _mediaType,
+        onApply: (yearRange, minRating, genreIds) {
+          setState(() {
+            _yearRange = yearRange;
+            _minRating = minRating;
+            _selectedGenreIds
+              ..clear()
+              ..addAll(genreIds);
+          });
+          ref.read(discoverControllerProvider.notifier).load(
+                mediaType: _mediaType,
+                language: ref.read(tmdbLanguageProvider),
+                params: _buildFilterParams(),
+              );
+        },
+        onReset: () {
+          setState(() {
+            _yearRange = const RangeValues(1970, 2026);
+            _minRating = 0;
+            _selectedGenreIds.clear();
+          });
+          ref.read(discoverControllerProvider.notifier).load(
+                mediaType: _mediaType,
+                language: ref.read(tmdbLanguageProvider),
+                params: _buildFilterParams(),
+              );
+        },
+      ),
+    );
+  }
 }
 
 class _CategoryChip extends StatelessWidget {
@@ -473,6 +565,302 @@ class _CategoryChip extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(10),
         side: BorderSide(color: theme.colorScheme.outlineVariant),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Discover Filter Bottom Sheet (Phase 2.3)
+// ---------------------------------------------------------------------------
+
+typedef _FilterApplyCallback = void Function(
+  RangeValues yearRange,
+  double minRating,
+  Set<int> genreIds,
+);
+
+class _DiscoverFilterSheet extends StatefulWidget {
+  const _DiscoverFilterSheet({
+    required this.initialYearRange,
+    required this.initialMinRating,
+    required this.initialGenreIds,
+    required this.mediaType,
+    required this.onApply,
+    required this.onReset,
+  });
+
+  final RangeValues initialYearRange;
+  final double initialMinRating;
+  final Set<int> initialGenreIds;
+  final String mediaType;
+  final _FilterApplyCallback onApply;
+  final VoidCallback onReset;
+
+  @override
+  State<_DiscoverFilterSheet> createState() => _DiscoverFilterSheetState();
+}
+
+class _DiscoverFilterSheetState extends State<_DiscoverFilterSheet> {
+  late RangeValues _yearRange;
+  late double _minRating;
+  late Set<int> _selectedGenreIds;
+
+  // Common genre list (works for both movie and TV)
+  static const _movieGenres = <({int id, String label})>[
+    (id: 28, label: 'Action'),
+    (id: 12, label: 'Adventure'),
+    (id: 16, label: 'Animation'),
+    (id: 35, label: 'Comedy'),
+    (id: 80, label: 'Crime'),
+    (id: 99, label: 'Documentary'),
+    (id: 18, label: 'Drama'),
+    (id: 10751, label: 'Family'),
+    (id: 14, label: 'Fantasy'),
+    (id: 36, label: 'History'),
+    (id: 27, label: 'Horror'),
+    (id: 10402, label: 'Music'),
+    (id: 9648, label: 'Mystery'),
+    (id: 10749, label: 'Romance'),
+    (id: 878, label: 'Sci-Fi'),
+    (id: 53, label: 'Thriller'),
+    (id: 10752, label: 'War'),
+    (id: 37, label: 'Western'),
+  ];
+
+  static const _tvGenres = <({int id, String label})>[
+    (id: 10759, label: 'Action & Adventure'),
+    (id: 16, label: 'Animation'),
+    (id: 35, label: 'Comedy'),
+    (id: 80, label: 'Crime'),
+    (id: 99, label: 'Documentary'),
+    (id: 18, label: 'Drama'),
+    (id: 10751, label: 'Family'),
+    (id: 10762, label: 'Kids'),
+    (id: 9648, label: 'Mystery'),
+    (id: 10763, label: 'News'),
+    (id: 10764, label: 'Reality'),
+    (id: 10765, label: 'Sci-Fi & Fantasy'),
+    (id: 10766, label: 'Soap'),
+    (id: 10767, label: 'Talk'),
+    (id: 10768, label: 'War & Politics'),
+    (id: 37, label: 'Western'),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _yearRange = widget.initialYearRange;
+    _minRating = widget.initialMinRating;
+    _selectedGenreIds = Set<int>.from(widget.initialGenreIds);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final genres =
+        widget.mediaType == 'tv' ? _tvGenres : _movieGenres;
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.75,
+      minChildSize: 0.4,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (_, scrollCtrl) => Container(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          children: [
+            // Handle
+            const SizedBox(height: 10),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.18),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Header
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  Text(
+                    'Filter Results',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const Spacer(),
+                  TextButton(
+                    onPressed: () {
+                      widget.onReset();
+                      Navigator.of(context).pop();
+                    },
+                    child: const Text('Reset'),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: ListView(
+                controller: scrollCtrl,
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+                children: [
+                  // Year Range
+                  Text(
+                    'Release Year',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        _yearRange.start.round().toString(),
+                        style: GoogleFonts.dmSans(
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                      Text(
+                        _yearRange.end.round().toString(),
+                        style: GoogleFonts.dmSans(
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  RangeSlider(
+                    values: _yearRange,
+                    min: 1970,
+                    max: 2026,
+                    divisions: 56,
+                    labels: RangeLabels(
+                      _yearRange.start.round().toString(),
+                      _yearRange.end.round().toString(),
+                    ),
+                    onChanged: (v) => setState(() => _yearRange = v),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Min Rating
+                  Text(
+                    'Minimum Rating  ★ ${_minRating == 0 ? 'Any' : _minRating.toStringAsFixed(1)}',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Slider(
+                    value: _minRating,
+                    min: 0,
+                    max: 9,
+                    divisions: 18,
+                    label: _minRating == 0
+                        ? 'Any'
+                        : _minRating.toStringAsFixed(1),
+                    onChanged: (v) => setState(() => _minRating = v),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Genres
+                  Text(
+                    'Genres',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: genres.map((g) {
+                      final isSelected = _selectedGenreIds.contains(g.id);
+                      return FilterChip(
+                        selected: isSelected,
+                        label: Text(g.label),
+                        onSelected: (selected) {
+                          Haptics.selection();
+                          setState(() {
+                            if (selected) {
+                              _selectedGenreIds.add(g.id);
+                            } else {
+                              _selectedGenreIds.remove(g.id);
+                            }
+                          });
+                        },
+                        selectedColor:
+                            theme.colorScheme.primary.withValues(alpha: 0.18),
+                        checkmarkColor: theme.colorScheme.primary,
+                        labelStyle: GoogleFonts.dmSans(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          color: isSelected
+                              ? theme.colorScheme.primary
+                              : theme.colorScheme.onSurface,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          side: BorderSide(
+                            color: isSelected
+                                ? theme.colorScheme.primary.withValues(
+                                    alpha: 0.4,
+                                  )
+                                : theme.colorScheme.outlineVariant,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+            ),
+            // Apply Button
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                20,
+                8,
+                20,
+                MediaQuery.of(context).padding.bottom + 12,
+              ),
+              child: SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () {
+                    Haptics.success();
+                    widget.onApply(_yearRange, _minRating, _selectedGenreIds);
+                    Navigator.of(context).pop();
+                  },
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: Text(
+                    'Apply Filters',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
