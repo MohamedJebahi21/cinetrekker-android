@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/auth/auth_controller.dart';
+import '../../../core/motion/haptic_service.dart';
 import '../../../core/utils/validation.dart';
 import '../data/feedback_repository.dart';
 
@@ -60,6 +61,7 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
             message: _messageController.text,
           );
       if (!mounted) return;
+      Haptics.success();
       setState(() {
         _isSubmitting = false;
         _submitted = true;
@@ -67,12 +69,14 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
       _messageController.clear();
     } on FeedbackException catch (error) {
       if (!mounted) return;
+      Haptics.error();
       setState(() {
         _isSubmitting = false;
         _error = error.message;
       });
     } catch (_) {
       if (!mounted) return;
+      Haptics.error();
       setState(() {
         _isSubmitting = false;
         _error = 'Unable to send feedback. Please try again later.';
@@ -82,13 +86,23 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
 
   Future<void> _openWebsiteFeedback() async {
     final uri = Uri.parse('https://cinetrekker.vercel.app/feedback');
-    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!opened && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not open the website feedback page.'),
-        ),
-      );
+    try {
+      final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!opened && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not open the website feedback page.'),
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not open the website feedback page.'),
+          ),
+        );
+      }
     }
   }
 

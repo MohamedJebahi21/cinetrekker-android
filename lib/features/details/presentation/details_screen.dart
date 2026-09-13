@@ -2011,6 +2011,17 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
         ],
 
         const SizedBox(height: 14),
+        if (state.error != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: AppErrorCard(
+              message: state.error!,
+              onRetry: () => notifier.load(
+                mediaId: widget.mediaId,
+                mediaType: widget.mediaType,
+              ),
+            ),
+          ),
         if (state.isLoading)
           const Center(child: CircularProgressIndicator.adaptive())
         else if (state.comments.isEmpty)

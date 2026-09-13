@@ -159,10 +159,22 @@ class AboutScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 FilledButton.icon(
-                  onPressed: () => launchUrl(
-                    Uri.parse('https://www.themoviedb.org'),
-                    mode: LaunchMode.externalApplication,
-                  ),
+                  onPressed: () async {
+                    try {
+                      await launchUrl(
+                        Uri.parse('https://www.themoviedb.org'),
+                        mode: LaunchMode.externalApplication,
+                      );
+                    } catch (_) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Could not open browser.'),
+                          ),
+                        );
+                      }
+                    }
+                  },
                   icon: const Icon(Icons.open_in_new_rounded, size: 16),
                   label: const Text('Visit themoviedb.org'),
                   style: FilledButton.styleFrom(

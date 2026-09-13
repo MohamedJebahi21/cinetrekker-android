@@ -6,7 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../shared/widgets/bouncy_pressable.dart';
-
+import '../../../core/motion/haptic_service.dart';
 import '../../../core/auth/auth_controller.dart';
 import '../../../core/auth/auth_session.dart';
 import '../../../core/models/media_models.dart';
@@ -156,8 +156,10 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
     setState(() => _followBusy = true);
     try {
       if (_isFollowing) {
+        Haptics.light();
         await social.unfollowUser(widget.userId);
       } else {
+        Haptics.follow();
         await social.followUser(widget.userId);
       }
       if (!mounted) return;
