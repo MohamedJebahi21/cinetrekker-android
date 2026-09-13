@@ -7,6 +7,7 @@ import '../../../core/api/tmdb_api_service.dart';
 import '../../../core/errors/app_error_messages.dart';
 import '../../../core/localization/locale_controller.dart';
 import '../../../core/models/media_models.dart';
+import '../../../core/motion/haptic_service.dart';
 import '../../../shared/widgets/app_error_card.dart';
 import '../../../shared/widgets/app_cached_image.dart';
 import '../../../shared/widgets/bouncy_pressable.dart';
@@ -40,6 +41,8 @@ class _FeatureParityScreenState extends ConsumerState<FeatureParityScreen> {
   int? _selectedGenreId;
   String _selectedDecade = '2020s';
   String _selectedAwardMode = 'oscars';
+  int? _selectedTimelineMonthIndex;
+  int? _selectedRatingBucket;
 
   final List<Map<String, dynamic>> _genreList = [
     {
@@ -760,25 +763,199 @@ class _FeatureParityScreenState extends ConsumerState<FeatureParityScreen> {
         (_watchedCount * 115 ~/ 60) + (_watchedEpisodesCount * 45 ~/ 60);
     final watchDays = (watchHours / 24).toStringAsFixed(1);
 
+    // Compute average rating
+    final ratedItems = _libraryItems
+        .where((i) => (i.rating != null && i.rating! > 0) || (i.voteAverage != null && i.voteAverage! > 0))
+        .toList();
+    final double avgRating = ratedItems.isNotEmpty
+        ? ratedItems.map((i) => i.rating ?? i.voteAverage ?? 0).reduce((a, b) => a + b) /
+            ratedItems.length
+        : 0.0;
+
+    // Cinephile Milestone Tier
+    final String tierName;
+    final String tierBadge;
+    final double tierProgress;
+    final int nextTierGoal;
+    if (_watchedCount < 10) {
+      tierName = 'Film Novice';
+      tierBadge = '🌱';
+      tierProgress = (_watchedCount / 10).clamp(0.0, 1.0);
+      nextTierGoal = 10;
+    } else if (_watchedCount < 25) {
+      tierName = 'Screen Scout';
+      tierBadge = '🎬';
+      tierProgress = ((_watchedCount - 10) / 15).clamp(0.0, 1.0);
+      nextTierGoal = 25;
+    } else if (_watchedCount < 50) {
+      tierName = 'Cinema Enthusiast';
+      tierBadge = '🍿';
+      tierProgress = ((_watchedCount - 25) / 25).clamp(0.0, 1.0);
+      nextTierGoal = 50;
+    } else if (_watchedCount < 100) {
+      tierName = 'Avid Cinephile';
+      tierBadge = '⭐';
+      tierProgress = ((_watchedCount - 50) / 50).clamp(0.0, 1.0);
+      nextTierGoal = 100;
+    } else {
+      tierName = 'Master Film Connoisseur';
+      tierBadge = '🏆';
+      tierProgress = 1.0;
+      nextTierGoal = _watchedCount;
+    }
+
+    // Monthly Timeline Data (past 6 months)
+    final now = DateTime.now();
+    final monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final timelineData = <Map<String, dynamic>>[];
+    for (int i = 5; i >= 0; i--) {
+      final monthDate = DateTime(now.year, now.month - i, 1);
+      final mName = monthNames[monthDate.month - 1];
+      final mYear = monthDate.year;
+      // Count items matching this month
+      int count = 0;
+      for (final item in _libraryItems) {
+        final dateStr = item.watchedAt ?? item.addedAt;
+        if (dateStr.isNotEmpty) {
+          final dt = DateTime.tryParse(dateStr);
+          if (dt != null && dt.month == monthDate.month && dt.year == mYear) {
+            count++;
+          }
+        }
+      }
+      timelineData.add({
+        'label': mName,
+        'year': mYear,
+        'count': count,
+      });
+    }
+
+    // Calculate max count for timeline normalization
+    final maxTimelineCount = timelineData
+        .map((m) => m['count'] as int)
+        .fold<int>(1, (prev, elem) => elem > prev ? elem : prev);
+
+    // Rating Histogram (1-10 stars in 5 tiers)
+    final ratingBuckets = [
+      {'label': '9–10 ★', 'desc': 'Masterpieces', 'count': 0},
+      {'label': '7–8 ★', 'desc': 'Great Films', 'count': 0},
+      {'label': '5–6 ★', 'desc': 'Average / Decent', 'count': 0},
+      {'label': '3–4 ★', 'desc': 'Mediocre', 'count': 0},
+      {'label': '1–2 ★', 'desc': 'Disliked', 'count': 0},
+    ];
+    for (final item in _libraryItems) {
+      final r = item.rating ?? item.voteAverage;
+      if (r != null && r > 0) {
+        if (r >= 9.0) {
+          ratingBuckets[0]['count'] = (ratingBuckets[0]['count'] as int) + 1;
+        } else if (r >= 7.0) {
+          ratingBuckets[1]['count'] = (ratingBuckets[1]['count'] as int) + 1;
+        } else if (r >= 5.0) {
+          ratingBuckets[2]['count'] = (ratingBuckets[2]['count'] as int) + 1;
+        } else if (r >= 3.0) {
+          ratingBuckets[3]['count'] = (ratingBuckets[3]['count'] as int) + 1;
+        } else {
+          ratingBuckets[4]['count'] = (ratingBuckets[4]['count'] as int) + 1;
+        }
+      }
+    }
+    final maxBucketCount = ratingBuckets
+        .map((b) => b['count'] as int)
+        .fold<int>(1, (prev, elem) => elem > prev ? elem : prev);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Viewing Statistics & Insights',
-          style: GoogleFonts.spaceGrotesk(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: theme.colorScheme.onSurface,
+        // Persona / Milestone Banner
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                theme.colorScheme.primary.withValues(alpha: isDark ? 0.25 : 0.15),
+                theme.colorScheme.primary.withValues(alpha: isDark ? 0.05 : 0.02),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: theme.colorScheme.primary.withValues(alpha: 0.3),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    tierBadge,
+                    style: const TextStyle(fontSize: 28),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Cinephile Rank',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                        Text(
+                          tierName,
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '$_watchedCount / $nextTierGoal',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: tierProgress,
+                  minHeight: 6,
+                  backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                  valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
+                ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
+
+        // Key Summary Metrics Grid (4 boxes)
         Row(
           children: [
             Expanded(
               child: _StatMetricBox(
                 label: 'Watch Time',
-                value: '$watchDays days',
-                sub: '$watchHours hours estimated',
+                value: '$watchDays d',
+                sub: '$watchHours h estimated',
                 theme: theme,
                 isDark: isDark,
               ),
@@ -788,65 +965,347 @@ class _FeatureParityScreenState extends ConsumerState<FeatureParityScreen> {
               child: _StatMetricBox(
                 label: 'Titles Seen',
                 value: '$_watchedCount',
-                sub: '$_watchlistCount in watchlist',
+                sub: '$_watchlistCount queued',
                 theme: theme,
                 isDark: isDark,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: _StatMetricBox(
+                label: 'Average Score',
+                value: avgRating > 0 ? '${avgRating.toStringAsFixed(1)} ★' : 'N/A',
+                sub: '${ratedItems.length} rated titles',
+                theme: theme,
+                isDark: isDark,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _StatMetricBox(
+                label: 'TV Episodes',
+                value: '$_watchedEpisodesCount',
+                sub: 'Logged in tracking',
+                theme: theme,
+                isDark: isDark,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+
+        // Interactive Monthly Viewing Timeline (Bar Chart)
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: theme.cardTheme.color ?? theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: theme.colorScheme.outlineVariant),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Monthly Activity',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                  Text(
+                    'Last 6 Months',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 12,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                height: 120,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: List.generate(timelineData.length, (idx) {
+                    final item = timelineData[idx];
+                    final count = item['count'] as int;
+                    final isSelected = _selectedTimelineMonthIndex == idx;
+                    final double fraction =
+                        maxTimelineCount > 0 ? (count / maxTimelineCount).clamp(0.08, 1.0) : 0.08;
+
+                    return Expanded(
+                      child: GestureDetector(
+                        onTap: () {
+                          Haptics.selection();
+                          setState(() {
+                            _selectedTimelineMonthIndex =
+                                _selectedTimelineMonthIndex == idx ? null : idx;
+                          });
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Text(
+                                '$count',
+                                style: GoogleFonts.spaceGrotesk(
+                                  fontSize: 11,
+                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                  color: isSelected
+                                      ? theme.colorScheme.primary
+                                      : theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              AnimatedContainer(
+                                duration: const Duration(milliseconds: 250),
+                                height: 60 * fraction,
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? theme.colorScheme.primary
+                                      : theme.colorScheme.primary.withValues(alpha: 0.35),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: isSelected
+                                      ? Border.all(color: Colors.white, width: 1.5)
+                                      : null,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                item['label'] as String,
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 11,
+                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                  color: isSelected
+                                      ? theme.colorScheme.primary
+                                      : theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              ),
+              if (_selectedTimelineMonthIndex != null) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.insights_rounded, size: 16, color: theme.colorScheme.primary),
+                      const SizedBox(width: 8),
+                      Text(
+                        '${timelineData[_selectedTimelineMonthIndex!]['count']} titles watched in ${timelineData[_selectedTimelineMonthIndex!]['label']} ${timelineData[_selectedTimelineMonthIndex!]['year']}',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 18),
+
+        // Rating Distribution Histogram (Interactive)
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: theme.cardTheme.color ?? theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(18),
             border: Border.all(color: theme.colorScheme.outlineVariant),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Top Categories & Breakdown',
+                'Rating Distribution',
                 style: GoogleFonts.spaceGrotesk(
-                  fontSize: 15,
+                  fontSize: 16,
                   fontWeight: FontWeight.w700,
+                  color: theme.colorScheme.onSurface,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 4),
+              Text(
+                'Breakdown of your logged ratings',
+                style: GoogleFonts.dmSans(
+                  fontSize: 12,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                ),
+              ),
+              const SizedBox(height: 16),
+              ...List.generate(ratingBuckets.length, (idx) {
+                final b = ratingBuckets[idx];
+                final count = b['count'] as int;
+                final isSelected = _selectedRatingBucket == idx;
+                final double fraction =
+                    maxBucketCount > 0 ? (count / maxBucketCount).clamp(0.04, 1.0) : 0.04;
+                final percentage =
+                    ratedItems.isNotEmpty ? (count / ratedItems.length * 100).toInt() : 0;
+
+                return GestureDetector(
+                  onTap: () {
+                    Haptics.selection();
+                    setState(() {
+                      _selectedRatingBucket = _selectedRatingBucket == idx ? null : idx;
+                    });
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 5),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            SizedBox(
+                              width: 55,
+                              child: Text(
+                                b['label'] as String,
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 12,
+                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                                  color: isSelected
+                                      ? theme.colorScheme.primary
+                                      : theme.colorScheme.onSurface,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Stack(
+                                children: [
+                                  Container(
+                                    height: 18,
+                                    decoration: BoxDecoration(
+                                      color: theme.colorScheme.surfaceContainerHighest,
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                  ),
+                                  FractionallySizedBox(
+                                    widthFactor: fraction,
+                                    child: AnimatedContainer(
+                                      duration: const Duration(milliseconds: 250),
+                                      height: 18,
+                                      decoration: BoxDecoration(
+                                        color: isSelected
+                                            ? theme.colorScheme.primary
+                                            : theme.colorScheme.primary.withValues(alpha: 0.45),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            SizedBox(
+                              width: 50,
+                              child: Text(
+                                '$count ($percentage%)',
+                                textAlign: TextAlign.right,
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 11,
+                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                  color: isSelected
+                                      ? theme.colorScheme.primary
+                                      : theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (isSelected)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4, left: 63),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                '${b['desc']}: $count titles rated here',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 11,
+                                  color: theme.colorScheme.primary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+            ],
+          ),
+        ),
+        const SizedBox(height: 18),
+
+        // Categories & Format Breakdown
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: theme.cardTheme.color ?? theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: theme.colorScheme.outlineVariant),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Media Types & Library Share',
+                style: GoogleFonts.spaceGrotesk(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 14),
               _GenreProgressRow(
                 label: 'Feature Films',
                 percentage: _watchedCount > 0
-                    ? (_libraryItems
-                                  .where((i) => i.mediaType == 'movie')
-                                  .length /
-                              _watchedCount)
-                          .clamp(0.1, 1.0)
+                    ? (_libraryItems.where((i) => i.mediaType == 'movie').length / _watchedCount)
+                        .clamp(0.05, 1.0)
                     : 0.65,
                 theme: theme,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               _GenreProgressRow(
-                label: 'TV Episodes & Series',
+                label: 'TV Series & Seasons',
                 percentage: _watchedCount > 0
-                    ? (_watchedEpisodesCount / (_watchedCount + 1)).clamp(
-                        0.1,
-                        1.0,
-                      )
+                    ? (_libraryItems.where((i) => i.mediaType == 'tv').length / _watchedCount)
+                        .clamp(0.05, 1.0)
                     : 0.35,
                 theme: theme,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               _GenreProgressRow(
-                label: 'Watchlist Discovery',
-                percentage:
-                    (_watchlistCount / (_watchlistCount + _watchedCount + 1))
-                        .clamp(0.1, 1.0),
+                label: 'Watchlist Discovery Queue',
+                percentage: (_watchlistCount / (_watchlistCount + _watchedCount + 1)).clamp(0.05, 1.0),
                 theme: theme,
               ),
             ],
           ),
         ),
+        const SizedBox(height: 24),
       ],
     );
   }
