@@ -56,7 +56,7 @@ class AboutScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Version 1.0.0 (build 1)',
+                      'Version 1.0.1 (build 2)',
                       style: GoogleFonts.dmSans(
                         fontSize: 12,
                         color: theme.colorScheme.onSurface.withValues(
