@@ -41,6 +41,23 @@ class _TvTrackingScreenState extends ConsumerState<TvTrackingScreen> {
     );
   }
 
+  void _showAiringScheduleDialog(
+    BuildContext ctx,
+    List<FollowedShowItem> shows,
+  ) {
+    // Filter only shows with a nextAirDate and sort ascending
+    final upcoming =
+        shows.where((s) => s.nextAirDate != null).toList()
+          ..sort((a, b) => a.nextAirDate!.compareTo(b.nextAirDate!));
+
+    showModalBottomSheet<void>(
+      context: ctx,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _AiringScheduleSheet(shows: upcoming),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(tvTrackingControllerProvider);
@@ -54,6 +71,13 @@ class _TvTrackingScreenState extends ConsumerState<TvTrackingScreen> {
           'TV Tracking',
           style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w700),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.calendar_month_outlined),
+            tooltip: 'Airing Schedule',
+            onPressed: () => _showAiringScheduleDialog(context, state.followedShows),
+          ),
+        ],
       ),
       body: RefreshIndicator(
         color: theme.colorScheme.primary,
@@ -432,10 +456,22 @@ class _FollowedShowTile extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onUnfollow;
 
+  String _subtitleText() {
+    final days = show.daysUntilAir();
+    if (days == null) return 'Tracking updates enabled';
+    if (days < 0) return 'Last episode aired ${-days}d ago';
+    if (days == 0) return '🔴 Airing today!';
+    if (days == 1) return '⏰ Airing tomorrow';
+    return '📅 Airing in $days days';
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final airingSoon = show.isAiringSoon();
+    final days = show.daysUntilAir();
+    final isToday = days == 0;
 
     return BouncyPressable(
       onTap: onTap,
@@ -443,7 +479,14 @@ class _FollowedShowTile extends StatelessWidget {
         decoration: BoxDecoration(
           color: theme.cardTheme.color ?? theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: theme.colorScheme.outlineVariant),
+          border: Border.all(
+            color: airingSoon
+                ? (isToday
+                    ? const Color(0xFFFF5252)
+                    : theme.colorScheme.primary)
+                : theme.colorScheme.outlineVariant,
+            width: airingSoon ? 1.5 : 1.0,
+          ),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.04),
@@ -456,54 +499,93 @@ class _FollowedShowTile extends StatelessWidget {
           type: MaterialType.transparency,
           child: ListTile(
             onTap: onTap,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-        leading: Container(
-          width: 42,
-          height: 56,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: theme.colorScheme.outlineVariant),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: show.posterPath != null
-                ? AppCachedImage(
-                    imageUrl:
-                        'https://image.tmdb.org/t/p/w185${show.posterPath}',
-                    fit: BoxFit.cover,
-                  )
-                : Container(
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    child: const Icon(Icons.tv_outlined, size: 20),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+            leading: Container(
+              width: 42,
+              height: 56,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: theme.colorScheme.outlineVariant),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: show.posterPath != null
+                    ? AppCachedImage(
+                        imageUrl:
+                            'https://image.tmdb.org/t/p/w185${show.posterPath}',
+                        fit: BoxFit.cover,
+                      )
+                    : Container(
+                        color: theme.colorScheme.surfaceContainerHighest,
+                        child: const Icon(Icons.tv_outlined, size: 20),
+                      ),
+              ),
+            ),
+            title: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    show.showName ?? 'Show #${show.showId}',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.onSurface,
+                    ),
                   ),
+                ),
+                if (airingSoon) ...[
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 7,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isToday
+                          ? const Color(0xFFFF5252).withValues(alpha: 0.15)
+                          : theme.colorScheme.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      isToday ? 'TODAY' : 'SOON',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.5,
+                        color: isToday
+                            ? const Color(0xFFFF5252)
+                            : theme.colorScheme.primary,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            subtitle: Text(
+              _subtitleText(),
+              style: GoogleFonts.dmSans(
+                fontSize: 11.5,
+                color: airingSoon
+                    ? (isToday
+                        ? const Color(0xFFFF5252)
+                        : theme.colorScheme.primary)
+                    : theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                fontWeight:
+                    airingSoon ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+            trailing: IconButton(
+              icon: Icon(
+                Icons.bookmark_remove_outlined,
+                size: 20,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
+              ),
+              onPressed: onUnfollow,
+              tooltip: 'Unfollow',
+            ),
           ),
         ),
-        title: Text(
-          show.showName ?? 'Show #${show.showId}',
-          style: GoogleFonts.spaceGrotesk(
-            fontSize: 14.5,
-            fontWeight: FontWeight.w600,
-            color: theme.colorScheme.onSurface,
-          ),
-        ),
-        subtitle: Text(
-          'Tracking updates enabled',
-          style: GoogleFonts.dmSans(
-            fontSize: 11.5,
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
-          ),
-        ),
-        trailing: IconButton(
-          icon: Icon(
-            Icons.bookmark_remove_outlined,
-            size: 20,
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
-          ),
-          onPressed: onUnfollow,
-          tooltip: 'Unfollow',
-        ),
-      ),
-      ),
       ),
     );
   }
@@ -589,5 +671,247 @@ class _RecentEpisodeTile extends StatelessWidget {
       );
     }
     return content;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Airing Schedule Bottom Sheet
+// ---------------------------------------------------------------------------
+
+class _AiringScheduleSheet extends StatelessWidget {
+  const _AiringScheduleSheet({required this.shows});
+
+  final List<FollowedShowItem> shows;
+
+  String _formatDate(String isoDate) {
+    final d = DateTime.tryParse(isoDate);
+    if (d == null) return isoDate;
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    return '${months[d.month - 1]} ${d.day}, ${d.year}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.55,
+      minChildSize: 0.35,
+      maxChildSize: 0.92,
+      expand: false,
+      builder: (_, scrollController) => Container(
+        decoration: BoxDecoration(
+          color: isDark
+              ? const Color(0xFF1C1C1E)
+              : theme.colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 10),
+            Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.calendar_month_rounded,
+                    color: theme.colorScheme.primary,
+                    size: 22,
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Upcoming Air Dates',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 4),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  shows.isEmpty
+                      ? 'No upcoming air dates found for your followed shows.'
+                      : '${shows.length} show${shows.length == 1 ? '' : 's'} with scheduled episodes',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 12.5,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            if (shows.isEmpty)
+              Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.event_available_outlined,
+                        size: 48,
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.25),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'No upcoming episodes',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 14,
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              Expanded(
+                child: ListView.separated(
+                  controller: scrollController,
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+                  itemCount: shows.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  itemBuilder: (_, i) {
+                    final show = shows[i];
+                    final days = show.daysUntilAir();
+                    final isToday = days == 0;
+                    final isSoon = show.isAiringSoon();
+
+                    String daysLabel;
+                    if (days == null) {
+                      daysLabel = '';
+                    } else if (days < 0) {
+                      daysLabel = '${-days}d ago';
+                    } else if (days == 0) {
+                      daysLabel = 'Today';
+                    } else if (days == 1) {
+                      daysLabel = 'Tomorrow';
+                    } else {
+                      daysLabel = 'In $days days';
+                    }
+
+                    return Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? theme.colorScheme.surfaceContainerHighest
+                                .withValues(alpha: 0.5)
+                            : theme.colorScheme.surfaceContainerLowest,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isSoon
+                              ? (isToday
+                                  ? const Color(0xFFFF5252).withValues(alpha: 0.5)
+                                  : theme.colorScheme.primary.withValues(alpha: 0.4))
+                              : theme.colorScheme.outlineVariant,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 48,
+                            child: Center(
+                              child: Text(
+                                isToday ? '🔴' : (isSoon ? '⏰' : '📅'),
+                                style: const TextStyle(fontSize: 22),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  show.showName ?? 'Show #${show.showId}',
+                                  style: GoogleFonts.spaceGrotesk(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: theme.colorScheme.onSurface,
+                                  ),
+                                ),
+                                if (show.nextEpisodeName != null &&
+                                    show.nextEpisodeName!.isNotEmpty) ...[
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    show.nextEpisodeName!,
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 12,
+                                      color: theme.colorScheme.onSurface
+                                          .withValues(alpha: 0.65),
+                                    ),
+                                  ),
+                                ],
+                                const SizedBox(height: 2),
+                                Text(
+                                  _formatDate(show.nextAirDate!),
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 12,
+                                    color: theme.colorScheme.onSurface
+                                        .withValues(alpha: 0.5),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (daysLabel.isNotEmpty)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isToday
+                                    ? const Color(0xFFFF5252).withValues(alpha: 0.12)
+                                    : (isSoon
+                                        ? theme.colorScheme.primary
+                                            .withValues(alpha: 0.10)
+                                        : theme.colorScheme.onSurface
+                                            .withValues(alpha: 0.06)),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                daysLabel,
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: isToday
+                                      ? const Color(0xFFFF5252)
+                                      : (isSoon
+                                          ? theme.colorScheme.primary
+                                          : theme.colorScheme.onSurface
+                                              .withValues(alpha: 0.5)),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 }

@@ -665,6 +665,8 @@ class FollowedShowItem {
     this.followedAt,
     this.lastWatchedSeason,
     this.lastWatchedEpisode,
+    this.nextAirDate,
+    this.nextEpisodeName,
   });
 
   final int showId;
@@ -674,6 +676,29 @@ class FollowedShowItem {
   final String? followedAt;
   final int? lastWatchedSeason;
   final int? lastWatchedEpisode;
+  /// ISO-8601 date string for the next episode air date (e.g. "2025-10-05").
+  final String? nextAirDate;
+  /// Name / label of the next episode if known.
+  final String? nextEpisodeName;
+
+  /// Returns true if nextAirDate is within the next [days] days (inclusive).
+  bool isAiringSoon({int days = 7}) {
+    if (nextAirDate == null) return false;
+    final air = DateTime.tryParse(nextAirDate!);
+    if (air == null) return false;
+    final now = DateTime.now();
+    final diff = air.difference(DateTime(now.year, now.month, now.day)).inDays;
+    return diff >= 0 && diff <= days;
+  }
+
+  /// Days until next air date; negative if already aired.
+  int? daysUntilAir() {
+    if (nextAirDate == null) return null;
+    final air = DateTime.tryParse(nextAirDate!);
+    if (air == null) return null;
+    final now = DateTime.now();
+    return air.difference(DateTime(now.year, now.month, now.day)).inDays;
+  }
 
   Map<String, dynamic> toJson() => <String, dynamic>{
     'show_id': showId,
@@ -683,6 +708,8 @@ class FollowedShowItem {
     'followed_at': followedAt,
     'last_watched_season': lastWatchedSeason,
     'last_watched_episode': lastWatchedEpisode,
+    'next_air_date': nextAirDate,
+    'next_episode_name': nextEpisodeName,
   };
 
   factory FollowedShowItem.fromJson(Map<String, dynamic> json) =>
@@ -694,6 +721,8 @@ class FollowedShowItem {
         followedAt: json['followed_at'] as String?,
         lastWatchedSeason: (json['last_watched_season'] as num?)?.toInt(),
         lastWatchedEpisode: (json['last_watched_episode'] as num?)?.toInt(),
+        nextAirDate: json['next_air_date'] as String?,
+        nextEpisodeName: json['next_episode_name'] as String?,
       );
 }
 

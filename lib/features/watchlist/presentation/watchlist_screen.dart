@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../core/accessibility/app_semantics.dart';
 import '../../../core/models/media_models.dart';
 import '../../../shared/widgets/app_error_card.dart';
 import '../../../shared/widgets/app_cached_image.dart';
@@ -46,8 +47,14 @@ class _WatchlistScreenState extends ConsumerState<WatchlistScreen> {
       if (_selectedKeys.contains(key)) {
         _selectedKeys.remove(key);
         if (_selectedKeys.isEmpty) _isSelecting = false;
+        AppSemantics.announce(
+          'Deselected ${item.displayTitle}. ${_selectedKeys.length} selected.',
+        );
       } else {
         _selectedKeys.add(key);
+        AppSemantics.announce(
+          'Selected ${item.displayTitle}. ${_selectedKeys.length} selected.',
+        );
       }
     });
   }
@@ -57,6 +64,9 @@ class _WatchlistScreenState extends ConsumerState<WatchlistScreen> {
     setState(() {
       _isSelecting = true;
       _selectedKeys.add(_itemKey(item));
+      AppSemantics.announce(
+        'Entered multi-select mode. Selected ${item.displayTitle}.',
+      );
     });
   }
 
@@ -64,6 +74,7 @@ class _WatchlistScreenState extends ConsumerState<WatchlistScreen> {
     setState(() {
       _isSelecting = false;
       _selectedKeys.clear();
+      AppSemantics.announce('Exited selection mode.');
     });
   }
 
@@ -246,6 +257,7 @@ class _WatchlistScreenState extends ConsumerState<WatchlistScreen> {
                     child: BouncyPressable(
                       onTap: () {
                         Haptics.tabSwitch();
+                        AppSemantics.announce('Switched to $label tab.');
                         setState(() => _tabIndex = idx);
                       },
                       child: AnimatedContainer(
@@ -515,6 +527,9 @@ class _WatchlistScreenState extends ConsumerState<WatchlistScreen> {
         );
       }
     }
+    AppSemantics.announce(
+      'Removed ${selectedItems.length} title${selectedItems.length == 1 ? '' : 's'} from list.',
+    );
     _clearSelection();
   }
 

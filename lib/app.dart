@@ -19,6 +19,7 @@ class CineTrekkerApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final themeStyle = ref.watch(themeControllerProvider);
     final textScaleStyle = ref.watch(textScaleControllerProvider);
+    final fontSizeScale = ref.watch(fontSizeScaleControllerProvider);
     final reducedMotionStyle = ref.watch(reducedMotionControllerProvider);
     final localeStyle = ref.watch(localeControllerProvider);
     final locale = switch (localeStyle) {
@@ -64,11 +65,13 @@ class CineTrekkerApp extends ConsumerWidget {
         routerConfig: router,
         builder: (context, child) {
           Widget base = child ?? const SizedBox.shrink();
-          final textScaleFactor = switch (textScaleStyle) {
-            CineTrekkerTextScaleStyle.system => null,
-            CineTrekkerTextScaleStyle.large => 1.15,
-            CineTrekkerTextScaleStyle.xLarge => 1.3,
-          };
+          final textScaleFactor = fontSizeScale != 1.0
+              ? fontSizeScale
+              : switch (textScaleStyle) {
+                  CineTrekkerTextScaleStyle.system => null,
+                  CineTrekkerTextScaleStyle.large => 1.15,
+                  CineTrekkerTextScaleStyle.xLarge => 1.3,
+                };
 
           if (textScaleFactor != null) {
             final mediaQuery = MediaQuery.of(context);

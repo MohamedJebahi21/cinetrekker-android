@@ -23,6 +23,7 @@ import '../../profile/presentation/profile_controller.dart';
 import '../../social/presentation/comments_controller.dart';
 import '../../tv_tracking/presentation/tv_tracking_controller.dart';
 import '../../watchlist/presentation/watchlist_controller.dart';
+import '../../../core/accessibility/app_semantics.dart';
 import '../../../shared/widgets/skeleton_loaders.dart';
 import 'details_controller.dart';
 
@@ -1131,6 +1132,7 @@ class _ActionBar extends ConsumerWidget {
                 messenger.hideCurrentSnackBar();
                 if (isWatchlist) {
                   Haptics.removeFromWatchlist();
+                  AppSemantics.announceWatchlistRemove(details.displayTitle);
                   messenger.showSnackBar(
                     SnackBar(
                       content: Text('Removed "${details.displayTitle}" from Watchlist'),
@@ -1146,6 +1148,7 @@ class _ActionBar extends ConsumerWidget {
                       );
                 } else {
                   Haptics.addToWatchlist();
+                  AppSemantics.announceWatchlistAdd(details.displayTitle);
                   messenger.showSnackBar(
                     SnackBar(
                       content: Text('Added "${details.displayTitle}" to Watchlist'),
@@ -1204,39 +1207,45 @@ class _ActionBar extends ConsumerWidget {
 
           // Watched Status Button (with Dialog)
           Expanded(
-            child: FilledButton.icon(
-              onPressed: () {
-                _showWatchedDialog(context, ref);
-              },
-              style: FilledButton.styleFrom(
-                backgroundColor: isWatched
-                    ? const Color(0xFF4CAF50).withValues(alpha: 0.15)
-                    : theme.colorScheme.secondary,
-                foregroundColor: isWatched
-                    ? const Color(0xFF4CAF50)
-                    : theme.colorScheme.onSurface,
-                elevation: 0,
-                minimumSize: const Size(0, 42),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  side: BorderSide(
-                    color: isWatched
-                        ? const Color(0xFF4CAF50).withValues(alpha: 0.3)
-                        : theme.colorScheme.outlineVariant,
+            child: Semantics(
+              button: true,
+              label: isWatched
+                  ? 'Watched. Double tap to edit score or log date.'
+                  : 'Mark as watched',
+              child: FilledButton.icon(
+                onPressed: () {
+                  _showWatchedDialog(context, ref);
+                },
+                style: FilledButton.styleFrom(
+                  backgroundColor: isWatched
+                      ? const Color(0xFF4CAF50).withValues(alpha: 0.15)
+                      : theme.colorScheme.secondary,
+                  foregroundColor: isWatched
+                      ? const Color(0xFF4CAF50)
+                      : theme.colorScheme.onSurface,
+                  elevation: 0,
+                  minimumSize: const Size(0, 42),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    side: BorderSide(
+                      color: isWatched
+                          ? const Color(0xFF4CAF50).withValues(alpha: 0.3)
+                          : theme.colorScheme.outlineVariant,
+                    ),
                   ),
                 ),
-              ),
-              icon: Icon(
-                isWatched
-                    ? Icons.check_circle_rounded
-                    : Icons.check_circle_outline_rounded,
-                size: 18,
-              ),
-              label: Text(
-                isWatched ? 'Watched' : 'Mark seen',
-                style: GoogleFonts.dmSans(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w600,
+                icon: Icon(
+                  isWatched
+                      ? Icons.check_circle_rounded
+                      : Icons.check_circle_outline_rounded,
+                  size: 18,
+                ),
+                label: Text(
+                  isWatched ? 'Watched' : 'Mark seen',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),
@@ -1244,54 +1253,68 @@ class _ActionBar extends ConsumerWidget {
           const SizedBox(width: 8),
 
           // Favorite Heart Button with spring bounce
-          BouncyPressable(
-            onTap: () {
-              final messenger = ScaffoldMessenger.of(context);
-              messenger.hideCurrentSnackBar();
-              if (isFavorite) {
-                Haptics.unfavorite();
-                messenger.showSnackBar(
-                  SnackBar(
-                    content: Text('Removed "${details.displayTitle}" from Favorites'),
-                    duration: const Duration(seconds: 2),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              } else {
-                Haptics.favorite();
-                messenger.showSnackBar(
-                  SnackBar(
-                    content: Text('Saved "${details.displayTitle}" to Favorites ❤️'),
-                    duration: const Duration(seconds: 2),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              }
-              ref
-                  .read(profileControllerProvider.notifier)
-                  .toggleFavoriteTitle(mediaType: mediaType, mediaId: mediaId);
-            },
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: isFavorite
-                    ? primary.withValues(alpha: 0.12)
-                    : theme.colorScheme.secondary,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
+          Semantics(
+            button: true,
+            label: isFavorite
+                ? 'Favorite title. Double tap to remove from Favorites.'
+                : 'Add to Favorites',
+            child: BouncyPressable(
+              onTap: () {
+                final messenger = ScaffoldMessenger.of(context);
+                messenger.hideCurrentSnackBar();
+                if (isFavorite) {
+                  Haptics.unfavorite();
+                  AppSemantics.announceFavorite(
+                    title: details.displayTitle,
+                    isFavorite: false,
+                  );
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text('Removed "${details.displayTitle}" from Favorites'),
+                      duration: const Duration(seconds: 2),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                } else {
+                  Haptics.favorite();
+                  AppSemantics.announceFavorite(
+                    title: details.displayTitle,
+                    isFavorite: true,
+                  );
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text('Saved "${details.displayTitle}" to Favorites ❤️'),
+                      duration: const Duration(seconds: 2),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+                ref
+                    .read(profileControllerProvider.notifier)
+                    .toggleFavoriteTitle(mediaType: mediaType, mediaId: mediaId);
+              },
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
                   color: isFavorite
-                      ? primary.withValues(alpha: 0.3)
-                      : theme.colorScheme.outlineVariant,
+                      ? primary.withValues(alpha: 0.12)
+                      : theme.colorScheme.secondary,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: isFavorite
+                        ? primary.withValues(alpha: 0.3)
+                        : theme.colorScheme.outlineVariant,
+                  ),
                 ),
-              ),
-              child: Icon(
-                isFavorite
-                    ? Icons.favorite_rounded
-                    : Icons.favorite_outline_rounded,
-                color: isFavorite
-                    ? primary
-                    : theme.colorScheme.onSurface.withValues(alpha: 0.65),
-                size: 22,
+                child: Icon(
+                  isFavorite
+                      ? Icons.favorite_rounded
+                      : Icons.favorite_outline_rounded,
+                  color: isFavorite
+                      ? primary
+                      : theme.colorScheme.onSurface.withValues(alpha: 0.65),
+                  size: 22,
+                ),
               ),
             ),
           ),
@@ -1353,6 +1376,10 @@ class _ActionBar extends ConsumerWidget {
                 FilledButton(
                   onPressed: () async {
                     Haptics.markWatched();
+                    AppSemantics.announceRating(
+                      title: details.displayTitle,
+                      rating: rating,
+                    );
                     await ref
                         .read(watchlistControllerProvider.notifier)
                         .markWatched(
