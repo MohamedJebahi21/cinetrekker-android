@@ -13,6 +13,7 @@ import '../../../core/auth/auth_controller.dart';
 import '../../../core/localization/locale_controller.dart';
 import '../../../core/models/media_models.dart';
 import '../../../core/motion/haptic_service.dart';
+import '../../../core/motion/motion_tokens.dart';
 import '../../../shared/widgets/app_cached_image.dart';
 import '../../../shared/widgets/app_error_card.dart';
 import '../../../shared/widgets/bouncy_pressable.dart';
@@ -153,6 +154,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> {
                 ),
               ],
               flexibleSpace: FlexibleSpaceBar(
+                collapseMode: CollapseMode.parallax,
                 background: Stack(
                   fit: StackFit.expand,
                   children: [
@@ -584,21 +586,61 @@ class _DetailsHeader extends StatelessWidget {
 // ScoreRing matching website's Circular Score Ring
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _ScoreRing extends StatelessWidget {
+class _ScoreRing extends StatefulWidget {
   const _ScoreRing({required this.score});
 
   final double score;
   static const _size = 46.0;
 
   @override
+  State<_ScoreRing> createState() => _ScoreRingState();
+}
+
+class _ScoreRingState extends State<_ScoreRing>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _animController;
+  late final Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animController = AnimationController(
+      vsync: this,
+      duration: MotionTokens.emphasis,
+    );
+    _animation = CurvedAnimation(
+      parent: _animController,
+      curve: MotionTokens.easeOut,
+    );
+    _animController.forward();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ScoreRing oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.score != widget.score) {
+      _animController.forward(from: 0.0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final score = widget.score;
     final color = score >= 7.0
         ? const Color(0xFF4CAF50)
         : (score >= 5.0 ? const Color(0xFFFFB300) : const Color(0xFFE53935));
 
-    final percentage = (score / 10.0).clamp(0.0, 1.0);
+    final disableAnimations =
+        MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    final targetPercentage = (score / 10.0).clamp(0.0, 1.0);
 
     return BouncyPressable(
       onTap: () {
@@ -657,20 +699,28 @@ class _ScoreRing extends StatelessWidget {
         );
       },
       child: SizedBox(
-        width: _size,
-        height: _size,
+        width: _ScoreRing._size,
+        height: _ScoreRing._size,
         child: Stack(
           alignment: Alignment.center,
           children: [
-            CustomPaint(
-              size: const Size(_size, _size),
-              painter: _ScoreRingPainter(
-                progress: percentage,
-                color: color,
-                backgroundColor: isDark
-                    ? Colors.white.withValues(alpha: 0.12)
-                    : Colors.black.withValues(alpha: 0.10),
-              ),
+            AnimatedBuilder(
+              animation: _animation,
+              builder: (context, child) {
+                final progress = disableAnimations
+                    ? targetPercentage
+                    : (_animation.value * targetPercentage);
+                return CustomPaint(
+                  size: const Size(_ScoreRing._size, _ScoreRing._size),
+                  painter: _ScoreRingPainter(
+                    progress: progress,
+                    color: color,
+                    backgroundColor: isDark
+                        ? Colors.white.withValues(alpha: 0.12)
+                        : Colors.black.withValues(alpha: 0.10),
+                  ),
+                );
+              },
             ),
             Text(
               score > 0 ? score.toStringAsFixed(1) : 'NR',

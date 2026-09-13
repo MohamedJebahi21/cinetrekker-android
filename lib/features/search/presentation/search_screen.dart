@@ -332,6 +332,64 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   }).toList(),
                 ),
                 const SizedBox(height: 20),
+
+                // Mood & Quick Discovery Pills
+                Text(
+                  'Explore by Mood & Genre',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    '🔥 Trending Now',
+                    '🚀 Sci-Fi',
+                    '🏆 Award Winners',
+                    '🍿 Feel Good',
+                    '⏳ Fast Paced',
+                    '👻 Horror Vault',
+                    '⚡ Action Thriller',
+                    '🎭 Mind-Bending',
+                  ].map((mood) {
+                    return BouncyPressable(
+                      onTap: () {
+                        Haptics.buttonTap();
+                        final query = mood
+                            .replaceFirst(RegExp(r'^[^\w]+'), '')
+                            .trim();
+                        _controller.text = query;
+                        _executeSearch(query);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 7,
+                        ),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.secondary,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: theme.colorScheme.outlineVariant,
+                          ),
+                        ),
+                        child: Text(
+                          mood,
+                          style: GoogleFonts.dmSans(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 24),
               ],
 
               if (state.isLoading && state.results.isEmpty)

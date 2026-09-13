@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import '../../../core/motion/haptic_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -113,6 +116,11 @@ class _WatchlistScreenState extends ConsumerState<WatchlistScreen> {
                   : Icons.grid_view_rounded,
             ),
             tooltip: _isGridView ? 'List view' : 'Grid view',
+          ),
+          IconButton(
+            onPressed: () => _openSurprisePicker(context, state),
+            icon: const Icon(Icons.casino_outlined),
+            tooltip: 'Surprise Me',
           ),
           IconButton(
             onPressed: () => context.push('/tv-tracking'),
@@ -368,6 +376,44 @@ class _WatchlistScreenState extends ConsumerState<WatchlistScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  void _openSurprisePicker(BuildContext context, WatchlistState state) {
+    Haptics.buttonTap();
+    final List<UserMediaItem> items;
+    if (_tabIndex == 1) {
+      items = state.watched;
+    } else if (_tabIndex == 2) {
+      // Favorites: items from watchlist+watched that are in profileState.favorites
+      final profileState = ref.read(profileControllerProvider);
+      final favoriteKeys = profileState.favorites.toSet();
+      final combined = <String, UserMediaItem>{};
+      for (final item in state.watchlist) {
+        final key = ProfileRepository.favoriteKey(item.mediaType, item.mediaId);
+        if (favoriteKeys.contains(key)) combined[key] = item;
+      }
+      for (final item in state.watched) {
+        final key = ProfileRepository.favoriteKey(item.mediaType, item.mediaId);
+        if (favoriteKeys.contains(key)) combined[key] = item;
+      }
+      items = combined.values.toList();
+    } else {
+      items = state.watchlist;
+    }
+    if (items.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No titles in this list to choose from!'),
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+    showDialog<void>(
+      context: context,
+      builder: (dialogCtx) => _SurpriseRouletteDialog(items: items),
     );
   }
 }
@@ -710,5 +756,208 @@ class _ListMediaCard extends ConsumerWidget {
           ),
         ),
       );
+  }
+}
+
+class _SurpriseRouletteDialog extends StatefulWidget {
+  const _SurpriseRouletteDialog({required this.items});
+
+  final List<UserMediaItem> items;
+
+  @override
+  State<_SurpriseRouletteDialog> createState() =>
+      _SurpriseRouletteDialogState();
+}
+
+class _SurpriseRouletteDialogState extends State<_SurpriseRouletteDialog> {
+  late int _currentIndex;
+  bool _isSpinning = true;
+  Timer? _timer;
+  int _step = 0;
+  final int _maxSteps = 16;
+  final math.Random _random = math.Random();
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = _random.nextInt(widget.items.length);
+    _spin();
+  }
+
+  void _spin() {
+    if (!mounted) return;
+    if (_step >= _maxSteps) {
+      Haptics.success();
+      setState(() => _isSpinning = false);
+      return;
+    }
+
+    _step++;
+    Haptics.selection();
+    setState(() {
+      _currentIndex = _random.nextInt(widget.items.length);
+    });
+
+    final delay = 60 + (_step * _step * 1.5).toInt();
+    _timer = Timer(Duration(milliseconds: delay), _spin);
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final item = widget.items[_currentIndex];
+    final posterUrl = item.posterPath != null && item.posterPath!.isNotEmpty
+        ? 'https://image.tmdb.org/t/p/w342${item.posterPath}'
+        : null;
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      backgroundColor: theme.colorScheme.surface,
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.casino_rounded,
+                  color: theme.colorScheme.primary,
+                  size: 24,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  _isSpinning ? 'Picking for You…' : 'Tonight\'s Pick! 🍿',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              width: 140,
+              height: 210,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: _isSpinning
+                      ? theme.colorScheme.outlineVariant
+                      : theme.colorScheme.primary,
+                  width: _isSpinning ? 1 : 2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: (_isSpinning ? Colors.black : theme.colorScheme.primary)
+                        .withValues(alpha: _isSpinning ? 0.2 : 0.35),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: posterUrl != null
+                    ? AppCachedImage(
+                        imageUrl: posterUrl,
+                        fit: BoxFit.cover,
+                      )
+                    : Container(
+                        color: theme.colorScheme.surfaceContainerHighest,
+                        child: const Icon(Icons.movie_outlined, size: 48),
+                      ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              item.displayTitle,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
+            if (item.voteAverage != null && item.voteAverage! > 0) ...[
+              const SizedBox(height: 6),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.star_rounded,
+                    color: Color(0xFFFFB800),
+                    size: 18,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    item.voteAverage!.toStringAsFixed(1),
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            const SizedBox(height: 20),
+            if (_isSpinning)
+              const SizedBox(
+                height: 42,
+                child: Center(child: CircularProgressIndicator.adaptive()),
+              )
+            else
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        setState(() {
+                          _isSpinning = true;
+                          _step = 0;
+                        });
+                        _spin();
+                      },
+                      style: OutlinedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text('Spin Again'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        context.push(
+                          '/details/${item.mediaType}/${item.mediaId}',
+                        );
+                      },
+                      style: FilledButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text('View Title'),
+                    ),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
   }
 }

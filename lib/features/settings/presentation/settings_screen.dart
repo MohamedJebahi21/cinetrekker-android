@@ -10,6 +10,7 @@ import '../../../core/accessibility/text_scale_controller.dart';
 import '../../../core/auth/auth_controller.dart';
 import '../../../core/content_safety/content_safety_controller.dart';
 import '../../../core/localization/locale_controller.dart';
+import '../../../core/motion/haptic_service.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../collections/data/collections_repository.dart';
 import '../../profile/data/profile_repository.dart';
@@ -388,7 +389,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     };
                     return Expanded(
                       child: GestureDetector(
-                        onTap: () => themeNotifier.setTheme(style),
+                        onTap: () {
+                          Haptics.toggleChange();
+                          themeNotifier.setTheme(style);
+                        },
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 180),
                           padding: const EdgeInsets.symmetric(vertical: 9),
