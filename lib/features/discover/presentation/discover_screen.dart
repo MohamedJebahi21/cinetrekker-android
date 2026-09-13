@@ -1,6 +1,5 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import '../../../core/motion/haptic_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -9,6 +8,8 @@ import '../../../core/models/media_models.dart';
 import '../../../core/localization/locale_controller.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../shared/widgets/app_error_card.dart';
+import '../../../shared/widgets/app_cached_image.dart';
+import '../../../shared/widgets/bouncy_pressable.dart';
 import 'discover_controller.dart';
 
 class DiscoverScreen extends ConsumerStatefulWidget {
@@ -69,7 +70,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
         actions: [
           IconButton(
             onPressed: () {
-              HapticFeedback.mediumImpact();
+              Haptics.buttonTap();
               final items = state.items;
               if (items.isNotEmpty) {
                 final randomItem = (List<TmdbMedia>.from(
@@ -124,8 +125,9 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
                       ? l10n.translate('movies')
                       : l10n.translate('tv_shows');
                   return Expanded(
-                    child: GestureDetector(
+                    child: BouncyPressable(
                       onTap: () {
+                        Haptics.tabSwitch();
                         setState(() => _mediaType = type);
                         ref
                             .read(discoverControllerProvider.notifier)
@@ -287,34 +289,30 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
                       ? 'https://image.tmdb.org/t/p/w342${item.posterPath}'
                       : null;
 
-                  return Container(
-                    decoration: BoxDecoration(
-                      color: theme.cardTheme.color ?? theme.colorScheme.surface,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: theme.colorScheme.outlineVariant,
-                        width: 1,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(
-                            alpha: isDark ? 0.20 : 0.04,
-                          ),
-                          blurRadius: 10,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
+                  return BouncyPressable(
+                    onTap: () => context.push(
+                      '/details/${item.mediaKind}/${item.id}?heroTag=${Uri.encodeComponent(heroTag)}',
                     ),
-                    child: Material(
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(16),
-                      child: InkWell(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: theme.cardTheme.color ?? theme.colorScheme.surface,
                         borderRadius: BorderRadius.circular(16),
-                        onTap: () => context.push(
-                          '/details/${item.mediaKind}/${item.id}?heroTag=${Uri.encodeComponent(heroTag)}',
+                        border: Border.all(
+                          color: theme.colorScheme.outlineVariant,
+                          width: 1,
                         ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(
+                              alpha: isDark ? 0.20 : 0.04,
+                            ),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -333,7 +331,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
                                   child: posterUrl != null
                                       ? Hero(
                                           tag: heroTag,
-                                          child: CachedNetworkImage(
+                                          child: AppCachedImage(
                                             imageUrl: posterUrl,
                                             fit: BoxFit.cover,
                                           ),
@@ -423,8 +421,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
                           ),
                         ),
                       ),
-                    ),
-                  );
+                    );
                 },
               ),
 

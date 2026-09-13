@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -9,7 +8,10 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/localization/locale_controller.dart';
+import '../../../core/motion/haptic_service.dart';
 import '../../../shared/widgets/app_error_card.dart';
+import '../../../shared/widgets/app_cached_image.dart';
+import '../../../shared/widgets/bouncy_pressable.dart';
 import 'search_controller.dart';
 
 class SearchScreen extends ConsumerStatefulWidget {
@@ -217,8 +219,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                       _ => type,
                     };
                     return Expanded(
-                      child: GestureDetector(
+                      child: BouncyPressable(
                         onTap: () {
+                          Haptics.tabSwitch();
                           setState(() => _type = type);
                           if (_controller.text.trim().isNotEmpty) {
                             ref
@@ -402,41 +405,37 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                               ? 'https://image.tmdb.org/t/p/w185${item.profilePath}'
                               : null);
 
-                    return Container(
-                      decoration: BoxDecoration(
-                        color:
-                            theme.cardTheme.color ?? theme.colorScheme.surface,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: theme.colorScheme.outlineVariant,
-                          width: 1,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(
-                              alpha: isDark ? 0.20 : 0.04,
-                            ),
-                            blurRadius: 10,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: Material(
-                        color: Colors.transparent,
-                        borderRadius: BorderRadius.circular(16),
-                        child: InkWell(
+                    return BouncyPressable(
+                      onTap: () {
+                        if (isPerson) {
+                          context.push('/person/${item.id}');
+                        } else {
+                          context.push(
+                            '/details/${item.mediaKind}/${item.id}?heroTag=${Uri.encodeComponent(heroTag)}',
+                          );
+                        }
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color:
+                              theme.cardTheme.color ?? theme.colorScheme.surface,
                           borderRadius: BorderRadius.circular(16),
-                          onTap: () {
-                            if (isPerson) {
-                              context.push('/person/${item.id}');
-                            } else {
-                              context.push(
-                                '/details/${item.mediaKind}/${item.id}?heroTag=${Uri.encodeComponent(heroTag)}',
-                              );
-                            }
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
+                          border: Border.all(
+                            color: theme.colorScheme.outlineVariant,
+                            width: 1,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(
+                                alpha: isDark ? 0.20 : 0.04,
+                              ),
+                              blurRadius: 10,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
                             child: Row(
                               children: [
                                 Container(
@@ -454,7 +453,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                                     child: imageUrl != null
                                         ? Hero(
                                             tag: heroTag,
-                                            child: CachedNetworkImage(
+                                            child: AppCachedImage(
                                               imageUrl: imageUrl,
                                               fit: BoxFit.cover,
                                             ),
@@ -567,8 +566,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                             ),
                           ),
                         ),
-                      ),
-                    );
+                      );
                   },
                 ),
 

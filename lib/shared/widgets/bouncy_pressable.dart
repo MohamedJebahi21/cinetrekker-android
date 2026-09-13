@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+
+import '../../core/motion/haptic_service.dart';
+import '../../core/motion/motion_tokens.dart';
 
 class BouncyPressable extends StatefulWidget {
   const BouncyPressable({
     super.key,
     required this.child,
     required this.onTap,
-    this.scaleFactor = 0.98,
+    this.scaleFactor = MotionTokens.cardPressScale,
     this.enableHaptic = true,
   });
 
@@ -29,15 +31,15 @@ class _BouncyPressableState extends State<BouncyPressable>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 110),
-      reverseDuration: const Duration(milliseconds: 140),
+      duration: MotionTokens.micro,
+      reverseDuration: MotionTokens.fast,
     );
     _scaleAnimation = Tween<double>(begin: 1.0, end: widget.scaleFactor)
         .animate(
           CurvedAnimation(
             parent: _controller,
-            curve: Curves.easeInOutCubic,
-            reverseCurve: Curves.easeOutCubic,
+            curve: MotionTokens.easeInOut,
+            reverseCurve: MotionTokens.easeOut,
           ),
         );
   }
@@ -51,7 +53,7 @@ class _BouncyPressableState extends State<BouncyPressable>
   void _onTapDown(TapDownDetails _) {
     if (widget.onTap == null) return;
     if (widget.enableHaptic) {
-      HapticFeedback.lightImpact();
+      Haptics.buttonTap();
     }
     _controller.forward();
   }

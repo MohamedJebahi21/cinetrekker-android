@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -10,8 +9,11 @@ import '../../../core/auth/auth_controller.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../core/models/media_models.dart';
 import '../../../core/errors/app_error_messages.dart';
+import '../../../core/motion/haptic_service.dart';
+import '../../../shared/widgets/animated_content_switcher.dart';
 import '../../../shared/widgets/bouncy_pressable.dart';
 import '../../../shared/widgets/skeleton_loaders.dart';
+import '../../../shared/widgets/app_cached_image.dart';
 import '../../tv_tracking/presentation/tv_tracking_controller.dart';
 import '../../watchlist/presentation/watchlist_controller.dart';
 import 'home_controller.dart';
@@ -34,9 +36,11 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     final user = authState.valueOrNull?.user;
     final theme = Theme.of(context);
 
-    return state.when(
-      loading: () => CustomScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
+    return AnimatedContentSwitcher(
+      child: state.when(
+        loading: () => CustomScrollView(
+          key: const ValueKey('home-loading'),
+          physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
           // Hero skeleton
           SliverToBoxAdapter(
@@ -61,6 +65,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
         ],
       ),
       error: (error, _) => Center(
+        key: const ValueKey('home-error'),
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
@@ -93,6 +98,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
             : feed.trendingWeek;
 
         return RefreshIndicator(
+          key: const ValueKey('home-data'),
           color: theme.colorScheme.primary,
           onRefresh: ref.read(homeControllerProvider.notifier).refresh,
           child: CustomScrollView(
@@ -263,7 +269,8 @@ class _HomeShellState extends ConsumerState<HomeShell> {
           ),
         );
       },
-    );
+    ),
+  );
   }
 }
 
@@ -311,7 +318,7 @@ class _SectionHeaderWithAction extends StatelessWidget {
             color: theme.colorScheme.onSurface,
           ),
         ),
-        GestureDetector(
+        BouncyPressable(
           onTap: onAction,
           child: Text(
             actionLabel,
@@ -343,8 +350,11 @@ class _ToggleChip extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return GestureDetector(
-      onTap: onTap,
+    return BouncyPressable(
+      onTap: () {
+        Haptics.tabSwitch();
+        onTap();
+      },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -690,7 +700,7 @@ class _ContinueWatchingCard extends ConsumerWidget {
       );
     }
 
-    return GestureDetector(
+    return BouncyPressable(
       onTap: onTap,
       child: Container(
         width: 220,
@@ -720,16 +730,10 @@ class _ContinueWatchingCard extends ConsumerWidget {
                     height: 100,
                     width: double.infinity,
                     child: backdropUrl != null
-                        ? CachedNetworkImage(
+                        ? AppCachedImage(
                             imageUrl: backdropUrl,
                             fit: BoxFit.cover,
-                            placeholder: (_, __) => Container(
-                              color: theme.colorScheme.surfaceContainerHighest,
-                            ),
-                            errorWidget: (_, __, ___) => Container(
-                              color: theme.colorScheme.surfaceContainerHighest,
-                              child: const Icon(Icons.tv_outlined),
-                            ),
+                            errorIcon: Icons.tv_outlined,
                           )
                         : Container(
                             color: theme.colorScheme.surfaceContainerHighest,
@@ -893,7 +897,7 @@ class _HorizontalPosterRail extends StatelessWidget {
               ? 'https://image.tmdb.org/t/p/w342${item.posterPath}'
               : null;
 
-          return GestureDetector(
+          return BouncyPressable(
             onTap: () => onTap(item, heroTag),
             child: SizedBox(
               width: 130,
@@ -929,16 +933,10 @@ class _HorizontalPosterRail extends StatelessWidget {
                           if (posterUrl != null)
                             Hero(
                               tag: heroTag,
-                              child: CachedNetworkImage(
+                              child: AppCachedImage(
                                 imageUrl: posterUrl,
                                 fit: BoxFit.cover,
-                                memCacheWidth: 260,
-                                memCacheHeight: 360,
-                                errorWidget: (_, __, ___) => Container(
-                                  color:
-                                      theme.colorScheme.surfaceContainerHighest,
-                                  child: const Icon(Icons.movie_outlined),
-                                ),
+                                errorIcon: Icons.movie_outlined,
                               ),
                             )
                           else
@@ -1099,17 +1097,11 @@ class _HomeHeroState extends ConsumerState<_HomeHero> {
                   final m = widget.items[idx];
                   return GestureDetector(
                     onTap: () => widget.onItemTap(m),
-                    child: CachedNetworkImage(
+                    child: AppCachedImage(
                       imageUrl:
                           'https://image.tmdb.org/t/p/w780${m.backdropPath}',
                       fit: BoxFit.cover,
-                      placeholder: (_, __) => Container(
-                        color: theme.colorScheme.surfaceContainerHighest,
-                      ),
-                      errorWidget: (_, __, ___) => Container(
-                        color: theme.colorScheme.surfaceContainerHighest,
-                        child: const Icon(Icons.movie_outlined),
-                      ),
+                      errorIcon: Icons.movie_outlined,
                     ),
                   );
                 },

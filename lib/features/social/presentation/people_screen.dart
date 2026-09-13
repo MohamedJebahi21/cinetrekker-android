@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../shared/widgets/bouncy_pressable.dart';
+
 import '../../../core/auth/auth_controller.dart';
 import '../../../shared/widgets/app_error_card.dart';
 import 'people_controller.dart';
@@ -137,107 +139,109 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
                 final isFollowing = state.followingIds.contains(person.userId);
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 10),
-                  child: Container(
-                    decoration: _glassCard(theme, isDark),
-                    child: Material(
-                      type: MaterialType.transparency,
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 6,
+                  child: BouncyPressable(
+                    onTap: () => context.push('/user/${person.userId}'),
+                    child: Container(
+                      decoration: _glassCard(theme, isDark),
+                      child: Material(
+                        type: MaterialType.transparency,
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 6,
+                          ),
+                          leading: Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: theme.colorScheme.primary,
+                                width: 1.5,
+                              ),
+                            ),
+                            child: CircleAvatar(
+                              backgroundColor: theme.colorScheme.primary.withValues(
+                                alpha: 0.12,
+                              ),
+                              backgroundImage: person.avatarUrl == null
+                                  ? null
+                                  : CachedNetworkImageProvider(person.avatarUrl!),
+                              child: person.avatarUrl == null
+                                  ? Icon(
+                                      Icons.person_rounded,
+                                      color: theme.colorScheme.primary,
+                                    )
+                                  : null,
+                            ),
+                          ),
+                          title: Text(
+                            person.displayName,
+                            style: GoogleFonts.spaceGrotesk(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.onSurface,
+                            ),
+                          ),
+                          subtitle: Text(
+                            person.bio ?? 'No bio',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.dmSans(
+                              fontSize: 12,
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.50,
+                              ),
+                            ),
+                          ),
+                          trailing: FilledButton(
+                            onPressed: state.isLoading
+                                ? null
+                                : () async {
+                                    if (session == null) {
+                                      context.push('/auth');
+                                      return;
+                                    }
+                                    if (isFollowing) {
+                                      await controller.unfollowUser(person.userId);
+                                    } else {
+                                      await controller.followUser(person.userId);
+                                    }
+                                  },
+                            style: FilledButton.styleFrom(
+                              backgroundColor: isFollowing
+                                  ? theme.colorScheme.secondary
+                                  : theme.colorScheme.primary,
+                              foregroundColor: isFollowing
+                                  ? theme.colorScheme.onSurface
+                                  : Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 8,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                side: isFollowing
+                                    ? BorderSide(
+                                        color: theme.colorScheme.outlineVariant,
+                                      )
+                                    : BorderSide.none,
+                              ),
+                            ),
+                            child: Text(
+                              session == null
+                                  ? 'Sign in'
+                                  : isFollowing
+                                  ? 'Unfollow'
+                                  : 'Follow',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
-                      leading: Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: theme.colorScheme.primary,
-                            width: 1.5,
-                          ),
-                        ),
-                        child: CircleAvatar(
-                          backgroundColor: theme.colorScheme.primary.withValues(
-                            alpha: 0.12,
-                          ),
-                          backgroundImage: person.avatarUrl == null
-                              ? null
-                              : CachedNetworkImageProvider(person.avatarUrl!),
-                          child: person.avatarUrl == null
-                              ? Icon(
-                                  Icons.person_rounded,
-                                  color: theme.colorScheme.primary,
-                                )
-                              : null,
-                        ),
-                      ),
-                      title: Text(
-                        person.displayName,
-                        style: GoogleFonts.spaceGrotesk(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: theme.colorScheme.onSurface,
-                        ),
-                      ),
-                      subtitle: Text(
-                        person.bio ?? 'No bio',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.dmSans(
-                          fontSize: 12,
-                          color: theme.colorScheme.onSurface.withValues(
-                            alpha: 0.50,
-                          ),
-                        ),
-                      ),
-                      onTap: () => context.push('/user/${person.userId}'),
-                      trailing: FilledButton(
-                        onPressed: state.isLoading
-                            ? null
-                            : () async {
-                                if (session == null) {
-                                  context.push('/auth');
-                                  return;
-                                }
-                                if (isFollowing) {
-                                  await controller.unfollowUser(person.userId);
-                                } else {
-                                  await controller.followUser(person.userId);
-                                }
-                              },
-                        style: FilledButton.styleFrom(
-                          backgroundColor: isFollowing
-                              ? theme.colorScheme.secondary
-                              : theme.colorScheme.primary,
-                          foregroundColor: isFollowing
-                              ? theme.colorScheme.onSurface
-                              : Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 8,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            side: isFollowing
-                                ? BorderSide(
-                                    color: theme.colorScheme.outlineVariant,
-                                  )
-                                : BorderSide.none,
-                          ),
-                        ),
-                        child: Text(
-                          session == null
-                              ? 'Sign in'
-                              : isFollowing
-                              ? 'Unfollow'
-                              : 'Follow',
-                          style: GoogleFonts.dmSans(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
                     ),
                   ),
                 );

@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,6 +7,7 @@ import '../../../core/auth/auth_controller.dart';
 import '../../../core/models/media_models.dart';
 import '../../../shared/widgets/app_error_card.dart';
 import '../../../shared/widgets/bouncy_pressable.dart';
+import '../../../shared/widgets/app_cached_image.dart';
 import 'tv_tracking_controller.dart';
 
 class TvTrackingScreen extends ConsumerStatefulWidget {
@@ -316,7 +316,7 @@ class _ContinueWatchingCard extends ConsumerWidget {
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
                         child: show.posterPath != null
-                            ? CachedNetworkImage(
+                            ? AppCachedImage(
                                 imageUrl:
                                     'https://image.tmdb.org/t/p/w185${show.posterPath}',
                                 fit: BoxFit.cover,
@@ -467,7 +467,7 @@ class _FollowedShowTile extends StatelessWidget {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(6),
             child: show.posterPath != null
-                ? CachedNetworkImage(
+                ? AppCachedImage(
                     imageUrl:
                         'https://image.tmdb.org/t/p/w185${show.posterPath}',
                     fit: BoxFit.cover,

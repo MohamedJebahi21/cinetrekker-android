@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../shared/widgets/bouncy_pressable.dart';
+
 import '../../../core/auth/auth_controller.dart';
 import '../../../shared/widgets/app_error_card.dart';
 import 'collections_controller.dart';
@@ -249,135 +251,137 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
               ...state.collections.map(
                 (collection) => Padding(
                   padding: const EdgeInsets.only(bottom: 10),
-                  child: Container(
-                    decoration: _glassCard(theme, isDark),
-                    child: Material(
-                      type: MaterialType.transparency,
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 6,
-                      ),
-                      onTap: () {
-                        showModalBottomSheet(
-                          context: context,
-                          backgroundColor: theme.colorScheme.surface,
-                          shape: const RoundedRectangleBorder(
-                            borderRadius: BorderRadius.vertical(
-                              top: Radius.circular(20),
-                            ),
+                  child: BouncyPressable(
+                    onTap: () {
+                      showModalBottomSheet(
+                        context: context,
+                        backgroundColor: theme.colorScheme.surface,
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: BorderRadius.vertical(
+                            top: Radius.circular(20),
                           ),
-                          builder: (sheetContext) => Padding(
-                            padding: const EdgeInsets.all(24),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.folder_special_rounded,
-                                      color: theme.colorScheme.primary,
-                                      size: 28,
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Text(
-                                        collection.name,
-                                        style: GoogleFonts.spaceGrotesk(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w700,
-                                        ),
+                        ),
+                        builder: (sheetContext) => Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.folder_special_rounded,
+                                    color: theme.colorScheme.primary,
+                                    size: 28,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      collection.name,
+                                      style: GoogleFonts.spaceGrotesk(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w700,
                                       ),
-                                    ),
-                                  ],
-                                ),
-                                if (collection.description != null &&
-                                    collection.description!.isNotEmpty) ...[
-                                  const SizedBox(height: 10),
-                                  Text(
-                                    collection.description!,
-                                    style: GoogleFonts.dmSans(
-                                      fontSize: 13,
-                                      color: theme.colorScheme.onSurface
-                                          .withValues(alpha: 0.7),
                                     ),
                                   ),
                                 ],
-                                const SizedBox(height: 14),
+                              ),
+                              if (collection.description != null &&
+                                  collection.description!.isNotEmpty) ...[
+                                const SizedBox(height: 10),
                                 Text(
-                                  '${collection.itemCount} titles saved in this collection',
+                                  collection.description!,
                                   style: GoogleFonts.dmSans(
-                                    fontSize: 12,
-                                    color: theme.colorScheme.primary,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const SizedBox(height: 20),
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: FilledButton.icon(
-                                    onPressed: () {
-                                      Navigator.of(sheetContext).pop();
-                                      context.push('/discover');
-                                    },
-                                    icon: const Icon(Icons.explore_outlined),
-                                    label: const Text('Discover Titles to Add'),
+                                    fontSize: 13,
+                                    color: theme.colorScheme.onSurface
+                                        .withValues(alpha: 0.7),
                                   ),
                                 ),
                               ],
+                              const SizedBox(height: 14),
+                              Text(
+                                '${collection.itemCount} titles saved in this collection',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 12,
+                                  color: theme.colorScheme.primary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+                              SizedBox(
+                                width: double.infinity,
+                                child: FilledButton.icon(
+                                  onPressed: () {
+                                    Navigator.of(sheetContext).pop();
+                                    context.push('/discover');
+                                  },
+                                  icon: const Icon(Icons.explore_outlined),
+                                  label: const Text('Discover Titles to Add'),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      decoration: _glassCard(theme, isDark),
+                      child: Material(
+                        type: MaterialType.transparency,
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 6,
+                          ),
+                          leading: Container(
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primary.withValues(
+                                alpha: 0.12,
+                              ),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(
+                              Icons.folder_outlined,
+                              color: theme.colorScheme.primary,
                             ),
                           ),
-                        );
-                      },
-                      leading: Container(
-                        width: 42,
-                        height: 42,
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primary.withValues(
-                            alpha: 0.12,
+                          title: Text(
+                            collection.name,
+                            style: GoogleFonts.spaceGrotesk(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.onSurface,
+                            ),
                           ),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(
-                          Icons.folder_outlined,
-                          color: theme.colorScheme.primary,
-                        ),
-                      ),
-                      title: Text(
-                        collection.name,
-                        style: GoogleFonts.spaceGrotesk(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: theme.colorScheme.onSurface,
-                        ),
-                      ),
-                      subtitle: Text(
-                        [
-                          if (collection.description != null &&
-                              collection.description!.isNotEmpty)
-                            collection.description,
-                          '${collection.itemCount} items',
-                        ].whereType<String>().join(' · '),
-                        style: GoogleFonts.dmSans(
-                          fontSize: 12,
-                          color: theme.colorScheme.onSurface.withValues(
-                            alpha: 0.55,
+                          subtitle: Text(
+                            [
+                              if (collection.description != null &&
+                                  collection.description!.isNotEmpty)
+                                collection.description,
+                              '${collection.itemCount} items',
+                            ].whereType<String>().join(' · '),
+                            style: GoogleFonts.dmSans(
+                              fontSize: 12,
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.55,
+                              ),
+                            ),
+                          ),
+                          trailing: IconButton(
+                            icon: Icon(
+                              Icons.delete_outline_rounded,
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.4,
+                              ),
+                            ),
+                            onPressed: session == null
+                                ? () => context.push('/auth')
+                                : () => notifier.deleteCollection(collection.id),
                           ),
                         ),
                       ),
-                      trailing: IconButton(
-                        icon: Icon(
-                          Icons.delete_outline_rounded,
-                          color: theme.colorScheme.onSurface.withValues(
-                            alpha: 0.4,
-                          ),
-                        ),
-                        onPressed: session == null
-                            ? () => context.push('/auth')
-                            : () => notifier.deleteCollection(collection.id),
-                      ),
-                    ),
                     ),
                   ),
                 ),

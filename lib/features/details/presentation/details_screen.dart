@@ -12,6 +12,8 @@ import '../../../core/api/tmdb_api_service.dart';
 import '../../../core/auth/auth_controller.dart';
 import '../../../core/localization/locale_controller.dart';
 import '../../../core/models/media_models.dart';
+import '../../../core/motion/haptic_service.dart';
+import '../../../shared/widgets/app_cached_image.dart';
 import '../../../shared/widgets/app_error_card.dart';
 import '../../../shared/widgets/bouncy_pressable.dart';
 import '../../profile/presentation/profile_controller.dart';
@@ -406,17 +408,11 @@ class _DetailsHeader extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    final imageWidget = CachedNetworkImage(
+    final imageWidget = AppCachedImage(
       imageUrl: details.posterPath == null
           ? ''
           : 'https://image.tmdb.org/t/p/w342${details.posterPath}',
       fit: BoxFit.cover,
-      placeholder: (_, __) =>
-          Container(color: theme.colorScheme.surfaceContainerHighest),
-      errorWidget: (_, __, ___) => Container(
-        color: theme.colorScheme.surfaceContainerHighest,
-        child: const Icon(Icons.movie_outlined),
-      ),
     );
 
     return Row(
@@ -844,6 +840,7 @@ class _ActionBar extends ConsumerWidget {
             child: FilledButton.icon(
               onPressed: () async {
                 if (isWatchlist) {
+                  Haptics.removeFromWatchlist();
                   await ref
                       .read(watchlistControllerProvider.notifier)
                       .removeFromWatchlist(
@@ -851,6 +848,7 @@ class _ActionBar extends ConsumerWidget {
                         mediaType: mediaType,
                       );
                 } else {
+                  Haptics.addToWatchlist();
                   await ref
                       .read(watchlistControllerProvider.notifier)
                       .addToWatchlist(
@@ -944,6 +942,11 @@ class _ActionBar extends ConsumerWidget {
           // Favorite Heart Button with spring bounce
           BouncyPressable(
             onTap: () {
+              if (isFavorite) {
+                Haptics.unfavorite();
+              } else {
+                Haptics.favorite();
+              }
               ref
                   .read(profileControllerProvider.notifier)
                   .toggleFavoriteTitle(mediaType: mediaType, mediaId: mediaId);
@@ -1014,6 +1017,9 @@ class _ActionBar extends ConsumerWidget {
                     divisions: 18,
                     label: rating.toStringAsFixed(1),
                     onChanged: (val) {
+                      if (val != rating) {
+                        Haptics.selection();
+                      }
                       setDialogState(() => rating = val);
                     },
                   ),
@@ -1026,6 +1032,7 @@ class _ActionBar extends ConsumerWidget {
                 ),
                 FilledButton(
                   onPressed: () async {
+                    Haptics.markWatched();
                     await ref
                         .read(watchlistControllerProvider.notifier)
                         .markWatched(
@@ -1209,7 +1216,7 @@ class _ProviderLogos extends StatelessWidget {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(10),
                 child: p.logoPath != null
-                    ? CachedNetworkImage(
+                    ? AppCachedImage(
                         imageUrl: 'https://image.tmdb.org/t/p/w92${p.logoPath}',
                         fit: BoxFit.cover,
                       )
@@ -1404,7 +1411,7 @@ class _TvSeasonAccordionState extends ConsumerState<_TvSeasonAccordion> {
                 const SizedBox(width: 8),
                 TextButton.icon(
                   onPressed: () async {
-                    HapticFeedback.mediumImpact();
+                    Haptics.markWatched();
                     await controller.markSeasonWatched(
                       showId: widget.tvId,
                       seasonNumber: _selectedSeasonNumber,
@@ -1475,7 +1482,7 @@ class _TvSeasonAccordionState extends ConsumerState<_TvSeasonAccordion> {
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
                         child: ep.stillPath != null
-                            ? CachedNetworkImage(
+                            ? AppCachedImage(
                                 imageUrl:
                                     'https://image.tmdb.org/t/p/w185${ep.stillPath}',
                                 fit: BoxFit.cover,
@@ -1723,7 +1730,7 @@ class _MediaRail extends StatelessWidget {
                             child: posterUrl != null
                                 ? Hero(
                                     tag: heroTag,
-                                    child: CachedNetworkImage(
+                                    child: AppCachedImage(
                                       imageUrl: posterUrl,
                                       fit: BoxFit.cover,
                                     ),
@@ -2040,15 +2047,9 @@ class _Backdrop extends StatelessWidget {
       );
     }
 
-    return CachedNetworkImage(
+    return AppCachedImage(
       imageUrl: 'https://image.tmdb.org/t/p/original$backdropPath',
       fit: BoxFit.cover,
-      placeholder: (_, __) => Container(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-      ),
-      errorWidget: (_, __, ___) => Container(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-      ),
     );
   }
 }
@@ -2058,7 +2059,7 @@ void _showShareModal(
   TmdbMediaDetails details,
   String mediaType,
 ) {
-  HapticFeedback.mediumImpact();
+  Haptics.buttonTap();
   final theme = Theme.of(context);
   final isDark = theme.brightness == Brightness.dark;
   final title = details.displayTitle;
@@ -2135,7 +2136,7 @@ void _showShareModal(
                   fit: StackFit.expand,
                   children: [
                     if (details.backdropPath != null)
-                      CachedNetworkImage(
+                      AppCachedImage(
                         imageUrl:
                             'https://image.tmdb.org/t/p/w780${details.backdropPath}',
                         fit: BoxFit.cover,
@@ -2180,7 +2181,7 @@ void _showShareModal(
                               ),
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(9),
-                                child: CachedNetworkImage(
+                                child: AppCachedImage(
                                   imageUrl:
                                       'https://image.tmdb.org/t/p/w185${details.posterPath}',
                                   fit: BoxFit.cover,
@@ -2273,7 +2274,7 @@ void _showShareModal(
                 Expanded(
                   child: FilledButton.icon(
                     onPressed: () {
-                      HapticFeedback.lightImpact();
+                      Haptics.success();
                       Clipboard.setData(ClipboardData(text: '$title: $url'));
                       Navigator.pop(ctx);
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -2297,7 +2298,7 @@ void _showShareModal(
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: () async {
-                      HapticFeedback.lightImpact();
+                      Haptics.buttonTap();
                       final text = Uri.encodeComponent(
                         'Watching "$title" on CineTrekker! $url',
                       );

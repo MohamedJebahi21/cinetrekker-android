@@ -1,12 +1,13 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import '../../../core/motion/haptic_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/models/media_models.dart';
 import '../../../shared/widgets/app_error_card.dart';
+import '../../../shared/widgets/app_cached_image.dart';
+import '../../../shared/widgets/bouncy_pressable.dart';
 import '../../profile/data/profile_repository.dart';
 import '../../profile/presentation/profile_controller.dart';
 import 'watchlist_controller.dart';
@@ -103,7 +104,7 @@ class _WatchlistScreenState extends ConsumerState<WatchlistScreen> {
         actions: [
           IconButton(
             onPressed: () {
-              HapticFeedback.selectionClick();
+              Haptics.toggleChange();
               setState(() => _isGridView = !_isGridView);
             },
             icon: Icon(
@@ -152,9 +153,9 @@ class _WatchlistScreenState extends ConsumerState<WatchlistScreen> {
                           ? Icons.check_circle_rounded
                           : Icons.favorite_rounded;
                   return Expanded(
-                    child: GestureDetector(
+                    child: BouncyPressable(
                       onTap: () {
-                        HapticFeedback.selectionClick();
+                        Haptics.tabSwitch();
                         setState(() => _tabIndex = idx);
                       },
                       child: AnimatedContainer(
@@ -432,7 +433,7 @@ class _GridMediaCard extends ConsumerWidget {
         ? 'https://image.tmdb.org/t/p/w342${item.posterPath}'
         : null;
 
-    return GestureDetector(
+    return BouncyPressable(
       onTap: () => context.push('/details/${item.mediaType}/${item.mediaId}'),
       child: Container(
         decoration: BoxDecoration(
@@ -459,31 +460,12 @@ class _GridMediaCard extends ConsumerWidget {
                     fit: StackFit.expand,
                     children: [
                       if (posterUrl != null)
-                        CachedNetworkImage(
+                        AppCachedImage(
                           imageUrl: posterUrl,
                           fit: BoxFit.cover,
-                          placeholder: (_, __) => Center(
-                            child: Icon(
-                              item.mediaType == 'tv'
-                                  ? Icons.tv_outlined
-                                  : Icons.movie_outlined,
-                              size: 32,
-                              color: theme.colorScheme.onSurface.withValues(
-                                alpha: 0.3,
-                              ),
-                            ),
-                          ),
-                          errorWidget: (_, __, ___) => Center(
-                            child: Icon(
-                              item.mediaType == 'tv'
-                                  ? Icons.tv_outlined
-                                  : Icons.movie_outlined,
-                              size: 32,
-                              color: theme.colorScheme.onSurface.withValues(
-                                alpha: 0.3,
-                              ),
-                            ),
-                          ),
+                          errorIcon: item.mediaType == 'tv'
+                              ? Icons.tv_outlined
+                              : Icons.movie_outlined,
                         )
                       else
                         Center(
@@ -588,28 +570,23 @@ class _ListMediaCard extends ConsumerWidget {
         ? 'https://image.tmdb.org/t/p/w185${item.posterPath}'
         : null;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.cardTheme.color ?? theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.colorScheme.outlineVariant),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
-        child: InkWell(
+    return BouncyPressable(
+      onTap: () => context.push('/details/${item.mediaType}/${item.mediaId}'),
+      child: Container(
+        decoration: BoxDecoration(
+          color: theme.cardTheme.color ?? theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(16),
-          onTap: () =>
-              context.push('/details/${item.mediaType}/${item.mediaId}'),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
+          border: Border.all(color: theme.colorScheme.outlineVariant),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
             child: Row(
               children: [
                 ClipRRect(
@@ -619,29 +596,12 @@ class _ListMediaCard extends ConsumerWidget {
                     height: 78,
                     color: theme.colorScheme.surfaceContainerHighest,
                     child: posterUrl != null
-                        ? CachedNetworkImage(
+                        ? AppCachedImage(
                             imageUrl: posterUrl,
                             fit: BoxFit.cover,
-                            placeholder: (_, __) => Center(
-                              child: Icon(
-                                item.mediaType == 'tv'
-                                    ? Icons.tv_outlined
-                                    : Icons.movie_outlined,
-                                color: theme.colorScheme.onSurface.withValues(
-                                  alpha: 0.3,
-                                ),
-                              ),
-                            ),
-                            errorWidget: (_, __, ___) => Center(
-                              child: Icon(
-                                item.mediaType == 'tv'
-                                    ? Icons.tv_outlined
-                                    : Icons.movie_outlined,
-                                color: theme.colorScheme.onSurface.withValues(
-                                  alpha: 0.3,
-                                ),
-                              ),
-                            ),
+                            errorIcon: item.mediaType == 'tv'
+                                ? Icons.tv_outlined
+                                : Icons.movie_outlined,
                           )
                         : Icon(
                             item.mediaType == 'tv'
@@ -735,7 +695,6 @@ class _ListMediaCard extends ConsumerWidget {
             ),
           ),
         ),
-      ),
-    );
+      );
   }
 }

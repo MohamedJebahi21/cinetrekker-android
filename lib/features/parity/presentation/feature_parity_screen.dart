@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,6 +8,7 @@ import '../../../core/errors/app_error_messages.dart';
 import '../../../core/localization/locale_controller.dart';
 import '../../../core/models/media_models.dart';
 import '../../../shared/widgets/app_error_card.dart';
+import '../../../shared/widgets/app_cached_image.dart';
 import '../../watchlist/data/user_library_repository.dart';
 
 class FeatureParityScreen extends ConsumerStatefulWidget {
@@ -627,7 +627,7 @@ class _FeatureParityScreenState extends ConsumerState<FeatureParityScreen> {
                         children: [
                           Expanded(
                             child: show.posterPath != null
-                                ? CachedNetworkImage(
+                                ? AppCachedImage(
                                     imageUrl:
                                         'https://image.tmdb.org/t/p/w342${show.posterPath}',
                                     fit: BoxFit.cover,
@@ -892,7 +892,7 @@ class _FeatureParityScreenState extends ConsumerState<FeatureParityScreen> {
                       fit: StackFit.expand,
                       children: [
                         if (posterUrl != null)
-                          CachedNetworkImage(
+                          AppCachedImage(
                             imageUrl: posterUrl,
                             fit: BoxFit.cover,
                           )

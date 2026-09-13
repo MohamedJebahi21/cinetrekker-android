@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/motion/motion_tokens.dart';
+
 class AppSkeletonBox extends StatefulWidget {
   const AppSkeletonBox({
     super.key,
@@ -25,7 +27,7 @@ class _AppSkeletonBoxState extends State<AppSkeletonBox>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1400),
+      duration: MotionTokens.shimmer,
     );
   }
 

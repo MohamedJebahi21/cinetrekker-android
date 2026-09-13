@@ -1,6 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import '../../core/motion/haptic_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -193,7 +193,7 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
           indicatorColor: primary.withValues(alpha: 0.14),
           labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
           onDestinationSelected: (index) {
-            HapticFeedback.selectionClick();
+            Haptics.navigationTap();
             final destination = switch (index) {
               0 => '/',
               1 => '/discover',
@@ -265,8 +265,14 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
     required Color onSurface,
   }) {
     return NavigationDestination(
-      icon: Icon(icon, color: onSurface.withValues(alpha: 0.55)),
-      selectedIcon: Icon(selectedIcon, color: primary),
+      icon: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 200),
+        child: Icon(icon, key: ValueKey('nav-$label-unselected'), color: onSurface.withValues(alpha: 0.55)),
+      ),
+      selectedIcon: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 200),
+        child: Icon(selectedIcon, key: ValueKey('nav-$label-selected'), color: primary),
+      ),
       label: label,
     );
   }

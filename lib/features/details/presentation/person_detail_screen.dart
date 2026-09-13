@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,6 +8,7 @@ import '../../../core/errors/app_error_messages.dart';
 import '../../../core/localization/locale_controller.dart';
 import '../../../core/models/media_models.dart';
 import '../../../shared/widgets/app_error_card.dart';
+import '../../../shared/widgets/app_cached_image.dart';
 
 class PersonDetailScreen extends ConsumerStatefulWidget {
   const PersonDetailScreen({super.key, required this.personId});
@@ -254,26 +254,13 @@ class _PersonDetailScreenState extends ConsumerState<PersonDetailScreen> {
                                                   BorderRadius.circular(12),
                                               child: AspectRatio(
                                                 aspectRatio: 2 / 3,
-                                                child: CachedNetworkImage(
+                                                child: AppCachedImage(
                                                   imageUrl:
                                                       item.imagePath == null
                                                       ? ''
                                                       : 'https://image.tmdb.org/t/p/w342${item.imagePath}',
                                                   fit: BoxFit.cover,
-                                                  placeholder: (_, __) => Container(
-                                                    color: theme
-                                                        .colorScheme
-                                                        .surfaceContainerHighest,
-                                                  ),
-                                                  errorWidget: (_, __, ___) =>
-                                                      Container(
-                                                        color: theme
-                                                            .colorScheme
-                                                            .surfaceContainerHighest,
-                                                        child: const Icon(
-                                                          Icons.movie_outlined,
-                                                        ),
-                                                      ),
+                                                  errorIcon: Icons.movie_outlined,
                                                 ),
                                               ),
                                             ),
@@ -330,7 +317,7 @@ class _PersonBackdrop extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
-        CachedNetworkImage(
+        AppCachedImage(
           imageUrl: 'https://image.tmdb.org/t/p/original$profilePath',
           fit: BoxFit.cover,
         ),
@@ -384,22 +371,12 @@ class _PersonHeader extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
               child: AspectRatio(
                 aspectRatio: 2 / 3,
-                child: CachedNetworkImage(
+                child: AppCachedImage(
                   imageUrl: person.profilePath == null
                       ? ''
                       : 'https://image.tmdb.org/t/p/w342${person.profilePath}',
                   fit: BoxFit.cover,
-                  placeholder: (_, __) => Container(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.surfaceContainerHighest,
-                  ),
-                  errorWidget: (_, __, ___) => Container(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.surfaceContainerHighest,
-                    child: const Icon(Icons.person_outline),
-                  ),
+                  errorIcon: Icons.person_outline,
                 ),
               ),
             ),

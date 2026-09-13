@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../core/auth/auth_controller.dart';
 import '../core/errors/app_error_messages.dart';
+import '../core/motion/motion_tokens.dart';
 import '../core/utils/analytics_service.dart';
 import '../features/auth/presentation/auth_screen.dart';
 import '../features/achievements/presentation/achievements_screen.dart';
@@ -40,8 +41,8 @@ Page<T> buildPageWithSlideTransition<T>({
   return CustomTransitionPage<T>(
     key: state.pageKey,
     child: child,
-    transitionDuration: const Duration(milliseconds: 300),
-    reverseTransitionDuration: const Duration(milliseconds: 220),
+    transitionDuration: MotionTokens.pageEnter,
+    reverseTransitionDuration: MotionTokens.pageExit,
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
       if (MediaQuery.maybeOf(context)?.disableAnimations ?? false) {
         return child;
@@ -50,7 +51,7 @@ Page<T> buildPageWithSlideTransition<T>({
         position: Tween<Offset>(
           begin: const Offset(0.0, 0.08),
           end: Offset.zero,
-        ).chain(CurveTween(curve: Curves.easeOutCubic)).animate(animation),
+        ).chain(CurveTween(curve: MotionTokens.easeOut)).animate(animation),
         child: FadeTransition(opacity: animation, child: child),
       );
     },
@@ -65,14 +66,14 @@ Page<T> buildPageWithFadeTransition<T>({
   return CustomTransitionPage<T>(
     key: state.pageKey,
     child: child,
-    transitionDuration: const Duration(milliseconds: 200),
-    reverseTransitionDuration: const Duration(milliseconds: 150),
+    transitionDuration: MotionTokens.tabEnter,
+    reverseTransitionDuration: MotionTokens.tabExit,
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
       if (MediaQuery.maybeOf(context)?.disableAnimations ?? false) {
         return child;
       }
       return FadeTransition(
-        opacity: CurveTween(curve: Curves.easeInOut).animate(animation),
+        opacity: CurveTween(curve: MotionTokens.easeInOut).animate(animation),
         child: child,
       );
     },
