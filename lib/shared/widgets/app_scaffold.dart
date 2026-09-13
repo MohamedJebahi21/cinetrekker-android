@@ -912,74 +912,77 @@ class _DrawerItem extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          decoration: BoxDecoration(
-            color: isActive
-                ? primary.withValues(alpha: 0.08)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
               color: isActive
-                  ? primary.withValues(alpha: 0.25)
+                  ? primary.withValues(alpha: 0.08)
                   : Colors.transparent,
-            ),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: isActive
-                      ? primary.withValues(alpha: 0.15)
-                      : theme.colorScheme.secondary,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  icon,
-                  size: 18,
-                  color: isActive
-                      ? primary
-                      : theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                ),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isActive
+                    ? primary.withValues(alpha: 0.25)
+                    : Colors.transparent,
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      label,
-                      style: GoogleFonts.spaceGrotesk(
-                        fontSize: 13.5,
-                        fontWeight: isActive
-                            ? FontWeight.w700
-                            : FontWeight.w600,
-                        color: isActive ? primary : theme.colorScheme.onSurface,
-                      ),
-                    ),
-                    Text(
-                      desc,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.dmSans(
-                        fontSize: 11,
-                        color: theme.colorScheme.onSurface.withValues(
-                          alpha: 0.5,
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: isActive
+                        ? primary.withValues(alpha: 0.15)
+                        : theme.colorScheme.secondary,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    icon,
+                    size: 18,
+                    color: isActive
+                        ? primary
+                        : theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        label,
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 13.5,
+                          fontWeight: isActive
+                              ? FontWeight.w700
+                              : FontWeight.w600,
+                          color: isActive ? primary : theme.colorScheme.onSurface,
                         ),
                       ),
-                    ),
-                  ],
+                      Text(
+                        desc,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.dmSans(
+                          fontSize: 11,
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              if (isActive)
-                Icon(Icons.arrow_forward_ios_rounded, size: 12, color: primary),
-            ],
+                if (isActive)
+                  Icon(Icons.arrow_forward_ios_rounded, size: 12, color: primary),
+              ],
+            ),
           ),
         ),
       ),

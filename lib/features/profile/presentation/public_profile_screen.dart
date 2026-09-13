@@ -494,59 +494,78 @@ class _WatchedRow extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Container(
-        decoration: BoxDecoration(
-          color: theme.cardTheme.color ?? theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: theme.colorScheme.outlineVariant, width: 1),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.16 : 0.03),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: ListTile(
-          leading: Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(
-              item.mediaType == 'tv' ? Icons.tv_outlined : Icons.movie_outlined,
-              color: theme.colorScheme.primary,
-              size: 20,
-            ),
+      child: Material(
+        type: MaterialType.transparency,
+        child: Container(
+          decoration: BoxDecoration(
+            color: theme.cardTheme.color ?? theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: theme.colorScheme.outlineVariant, width: 1),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.16 : 0.03),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-          title: Text(
-            item.mediaType == 'tv'
-                ? 'TV show #${item.mediaId}'
-                : 'Movie #${item.mediaId}',
-            style: GoogleFonts.spaceGrotesk(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: theme.colorScheme.onSurface,
+          child: ListTile(
+            leading: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: item.posterPath != null
+                  ? CachedNetworkImage(
+                      imageUrl:
+                          'https://image.tmdb.org/t/p/w185${item.posterPath}',
+                      width: 38,
+                      height: 56,
+                      fit: BoxFit.cover,
+                      errorWidget: (_, __, ___) => _posterFallback(theme, item),
+                    )
+                  : _posterFallback(theme, item),
             ),
-          ),
-          subtitle: item.watchedAt == null
-              ? null
-              : Text(
-                  'Watched ${item.watchedAt}',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 11,
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.50),
+            title: Text(
+              item.displayTitle,
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.onSurface,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            subtitle: item.watchedAt == null
+                ? null
+                : Text(
+                    'Watched ${item.watchedAt}',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 11,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.50),
+                    ),
                   ),
-                ),
-          trailing: Icon(
-            Icons.chevron_right_rounded,
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+            trailing: Icon(
+              Icons.chevron_right_rounded,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+            ),
+            onTap: () =>
+                context.push('/details/${item.mediaType}/${item.mediaId}'),
           ),
-          onTap: () =>
-              context.push('/details/${item.mediaType}/${item.mediaId}'),
         ),
+      ),
+    );
+  }
+
+  Widget _posterFallback(ThemeData theme, UserMediaItem item) {
+    return Container(
+      width: 38,
+      height: 56,
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primary.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Icon(
+        item.mediaType == 'tv' ? Icons.tv_outlined : Icons.movie_outlined,
+        color: theme.colorScheme.primary,
+        size: 20,
       ),
     );
   }

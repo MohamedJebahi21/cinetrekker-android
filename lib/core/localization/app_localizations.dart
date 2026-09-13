@@ -48,6 +48,7 @@ class AppLocalizations {
       'follow_show': 'Follow show',
       'unfollow_show': 'Unfollow show',
       'mark_episode_watched': 'Mark episode watched',
+      'in_theaters': 'In Theaters',
     },
     'es': {
       'trending_today': 'Tendencias de hoy',
@@ -89,6 +90,7 @@ class AppLocalizations {
       'follow_show': 'Seguir serie',
       'unfollow_show': 'Dejar de seguir',
       'mark_episode_watched': 'Marcar episodio visto',
+      'in_theaters': 'En cartelera',
     },
     'fr': {
       'trending_today': 'Tendances aujourd\'hui',
@@ -130,6 +132,7 @@ class AppLocalizations {
       'follow_show': 'Suivre la série',
       'unfollow_show': 'Ne plus suivre',
       'mark_episode_watched': 'Marquer comme vu',
+      'in_theaters': 'À l\'affiche',
     },
     'de': {
       'trending_today': 'Heute im Trend',
@@ -171,6 +174,7 @@ class AppLocalizations {
       'follow_show': 'Serie folgen',
       'unfollow_show': 'Entfolgen',
       'mark_episode_watched': 'Episode als gesehen markieren',
+      'in_theaters': 'Im Kino',
     },
     'tr': {
       'trending_today': 'Bugün trendde olanlar',
@@ -212,6 +216,7 @@ class AppLocalizations {
       'follow_show': 'Diziyi takip et',
       'unfollow_show': 'Takibi bırak',
       'mark_episode_watched': 'Bölümü izlendi olarak işaretle',
+      'in_theaters': 'Vizyonda',
     },
     'ar': {
       'trending_today': 'شائع اليوم',
@@ -253,6 +258,7 @@ class AppLocalizations {
       'follow_show': 'متابعة المسلسل',
       'unfollow_show': 'إلغاء المتابعة',
       'mark_episode_watched': 'تحديد الحلقة كـمشاهدة',
+      'in_theaters': 'في دور العرض',
     },
   };
 

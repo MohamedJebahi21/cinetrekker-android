@@ -167,17 +167,21 @@ class _FeatureParityScreenState extends ConsumerState<FeatureParityScreen> {
 
       if (widget.mode == 'calendar' || widget.mode == 'upcoming') {
         final followedShows = await library.getFollowedShows();
-        for (final show in followedShows.take(8)) {
-          try {
-            calendarShows.add(
-              await tmdb.details(
+        final futures = followedShows.take(8).map<Future<TmdbMediaDetails?>>(
+          (show) async {
+            try {
+              return await tmdb.details(
                 mediaType: 'tv',
                 mediaId: show.showId,
                 language: language,
-              ),
-            );
-          } catch (_) {}
-        }
+              );
+            } catch (_) {
+              return null;
+            }
+          },
+        );
+        final results = await Future.wait(futures);
+        calendarShows.addAll(results.whereType<TmdbMediaDetails>());
       }
 
       final response = await _loadResponse(tmdb, language, watched);
@@ -380,10 +384,22 @@ class _FeatureParityScreenState extends ConsumerState<FeatureParityScreen> {
               _buildCalendarHeader(theme),
               const SizedBox(height: 16),
             ] else if (widget.mode == 'quests') ...[
-              _buildQuestsView(theme, isDark),
+              if (_loading)
+                const Padding(
+                  padding: EdgeInsets.all(40),
+                  child: Center(child: CircularProgressIndicator.adaptive()),
+                )
+              else
+                _buildQuestsView(theme, isDark),
             ] else if (widget.mode == 'stats' ||
                 widget.mode == 'enhanced-stats') ...[
-              _buildStatsView(theme, isDark),
+              if (_loading)
+                const Padding(
+                  padding: EdgeInsets.all(40),
+                  child: Center(child: CircularProgressIndicator.adaptive()),
+                )
+              else
+                _buildStatsView(theme, isDark),
             ],
 
             if (widget.mode != 'quests' &&

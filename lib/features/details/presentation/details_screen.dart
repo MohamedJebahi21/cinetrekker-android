@@ -1587,7 +1587,7 @@ class _CastRail extends StatelessWidget {
             separatorBuilder: (_, __) => const SizedBox(width: 14),
             itemBuilder: (context, index) {
               final member = cast[index];
-              return GestureDetector(
+              return BouncyPressable(
                 onTap: () => context.push('/person/${member.id}'),
                 child: SizedBox(
                   width: 80,
@@ -1693,7 +1693,7 @@ class _MediaRail extends StatelessWidget {
                     ? 'https://image.tmdb.org/t/p/w342${item.posterPath}'
                     : null;
 
-                return GestureDetector(
+                return BouncyPressable(
                   onTap: () => onTap(item, heroTag),
                   child: SizedBox(
                     width: 120,
@@ -2307,7 +2307,20 @@ void _showShareModal(
                           waUrl,
                           mode: LaunchMode.externalApplication,
                         );
-                      } catch (_) {}
+                      } catch (_) {
+                        // Fallback: copy link to clipboard when share app unavailable
+                        await Clipboard.setData(
+                          ClipboardData(text: '$title: $url'),
+                        );
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Link copied to clipboard!'),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        }
+                      }
                     },
                     icon: const Icon(Icons.share_rounded, size: 18),
                     label: const Text('Share Link'),

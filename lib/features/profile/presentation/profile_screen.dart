@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/auth/auth_controller.dart';
 import '../../../shared/widgets/app_error_card.dart';
+import '../../../shared/widgets/bouncy_pressable.dart';
 import '../data/profile_repository.dart';
 import 'profile_controller.dart';
 
@@ -549,7 +550,7 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return BouncyPressable(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
@@ -608,36 +609,39 @@ class _ProfileNavTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      onTap: onTap,
-      leading: Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: theme.colorScheme.secondary,
-          borderRadius: BorderRadius.circular(10),
+    return Material(
+      type: MaterialType.transparency,
+      child: ListTile(
+        onTap: onTap,
+        leading: Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: theme.colorScheme.secondary,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, size: 18, color: theme.colorScheme.primary),
         ),
-        child: Icon(icon, size: 18, color: theme.colorScheme.primary),
-      ),
-      title: Text(
-        label,
-        style: GoogleFonts.spaceGrotesk(
-          fontSize: 14.5,
-          fontWeight: FontWeight.w600,
-          color: theme.colorScheme.onSurface,
+        title: Text(
+          label,
+          style: GoogleFonts.spaceGrotesk(
+            fontSize: 14.5,
+            fontWeight: FontWeight.w600,
+            color: theme.colorScheme.onSurface,
+          ),
         ),
-      ),
-      subtitle: Text(
-        subtitle,
-        style: GoogleFonts.dmSans(
-          fontSize: 11.5,
-          color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+        subtitle: Text(
+          subtitle,
+          style: GoogleFonts.dmSans(
+            fontSize: 11.5,
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+          ),
         ),
-      ),
-      trailing: Icon(
-        Icons.chevron_right_rounded,
-        size: 20,
-        color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+        trailing: Icon(
+          Icons.chevron_right_rounded,
+          size: 20,
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+        ),
       ),
     );
   }

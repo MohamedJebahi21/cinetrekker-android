@@ -199,21 +199,28 @@ class _SocialScreenState extends ConsumerState<SocialScreen> {
               ...state.notifications.map(
                 (notification) => Padding(
                   padding: const EdgeInsets.only(bottom: 10),
-                  child: Container(
-                    decoration: _glassCard(theme, isDark),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 6,
-                      ),
-                      onTap: () {
-                        ref
-                            .read(notificationsControllerProvider.notifier)
-                            .markAsRead(notification.id);
-                        if (notification.type == 'follower') {
-                          context.push('/people');
-                        }
-                      },
+                  child: Material(
+                    type: MaterialType.transparency,
+                    child: Container(
+                      decoration: _glassCard(theme, isDark),
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 6,
+                        ),
+                        onTap: () {
+                          ref
+                              .read(notificationsControllerProvider.notifier)
+                              .markAsRead(notification.id);
+                          if (notification.mediaId != null &&
+                              notification.mediaType != null) {
+                            context.push(
+                              '/details/${notification.mediaType}/${notification.mediaId}',
+                            );
+                          } else if (notification.type == 'follower') {
+                            context.push('/people');
+                          }
+                        },
                       leading: Container(
                         width: 40,
                         height: 40,
@@ -264,6 +271,7 @@ class _SocialScreenState extends ConsumerState<SocialScreen> {
                           color: theme.colorScheme.onSurface.withValues(
                             alpha: 0.40,
                           ),
+                        ),
                         ),
                       ),
                     ),

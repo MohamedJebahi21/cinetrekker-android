@@ -65,14 +65,19 @@ class CommentsController extends Notifier<CommentsState> {
     bool containsSpoiler = false,
     double? rating,
   }) async {
-    final repository = ref.read(socialRepositoryProvider);
-    await repository.addComment(
-      mediaId: mediaId,
-      mediaType: mediaType,
-      content: content,
-      containsSpoiler: containsSpoiler,
-    );
-    await load(mediaId: mediaId, mediaType: mediaType);
+    state = state.copyWith(error: null);
+    try {
+      final repository = ref.read(socialRepositoryProvider);
+      await repository.addComment(
+        mediaId: mediaId,
+        mediaType: mediaType,
+        content: content,
+        containsSpoiler: containsSpoiler,
+      );
+      await load(mediaId: mediaId, mediaType: mediaType);
+    } catch (error) {
+      state = state.copyWith(error: describeAppError(error));
+    }
   }
 
   Future<void> likeComment({
@@ -80,8 +85,13 @@ class CommentsController extends Notifier<CommentsState> {
     required String mediaType,
     required String commentId,
   }) async {
-    final repository = ref.read(socialRepositoryProvider);
-    await repository.likeComment(commentId);
-    await load(mediaId: mediaId, mediaType: mediaType);
+    state = state.copyWith(error: null);
+    try {
+      final repository = ref.read(socialRepositoryProvider);
+      await repository.likeComment(commentId);
+      await load(mediaId: mediaId, mediaType: mediaType);
+    } catch (error) {
+      state = state.copyWith(error: describeAppError(error));
+    }
   }
 }

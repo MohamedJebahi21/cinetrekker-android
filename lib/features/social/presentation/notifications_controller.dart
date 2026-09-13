@@ -72,6 +72,8 @@ class NotificationsController extends Notifier<NotificationsState> {
           message: n.message,
           isRead: true,
           createdAt: n.createdAt,
+          mediaId: n.mediaId,
+          mediaType: n.mediaType,
         );
       }
       return n;

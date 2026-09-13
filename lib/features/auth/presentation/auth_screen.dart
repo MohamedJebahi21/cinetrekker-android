@@ -124,10 +124,12 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     final busy = _submitting || authState.isLoading;
 
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+      body: Stack(
+        children: [
+          SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 440),
               child: Column(
@@ -550,6 +552,20 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             ),
           ),
         ),
+          ),
+          // Back button overlay — visible when route can be popped (e.g. guest tapped from another screen)
+          if (Navigator.of(context).canPop())
+            SafeArea(
+              child: Align(
+                alignment: Alignment.topLeft,
+                child: IconButton(
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  tooltip: 'Back',
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
