@@ -1,0 +1,13 @@
+# Cursor Rules — CineTrekker Android
+
+Before making any code modifications in this workspace, you MUST review the canonical documentation:
+- AI_RULES.md — Engineering authority and core principles
+- PROJECT_CONTEXT.md — Current system state and feature map
+- ARCHITECTURE.md — System layers, offline queue, and technical invariants
+- DEFINITION_OF_DONE.md — Quality gates and completion checklist
+
+Key Standards:
+- Do not guess or invent APIs, models, or routes.
+- Reuse widgets in `lib/shared/widgets/` and services in `lib/core/`.
+- Verify with `flutter analyze` and `flutter test`.
+- Keep `PROJECT_CONTEXT.md` and `CHANGELOG.md` updated after changes.
