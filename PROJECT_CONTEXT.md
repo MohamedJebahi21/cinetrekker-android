@@ -5,8 +5,8 @@
 - **Type**: Native Android cinema discovery, tracking, and companion application built with Flutter.
 - **Audience**: Cinema enthusiasts, TV series binge-watchers, and film collectors who want a fast, intentional, and ad-free experience.
 - **Core Goals**:
-  - Seamless movie and TV series discovery powered by TMDB.
-  - Granular watchlist, watched history, and season/episode tracking.
+  - Seamless movie and TV series discovery powered by TMDB metadata.
+  - Granular personal watchlist, watched history, and season/episode tracking.
   - Social interactions (reviews, comments, user following, public profiles).
   - Rich cinephile analytics (ratings distribution, watch time, 6-month viewing timeline, rank progression).
   - Offline-first reliability with optimistic local mutations and automated remote sync.
@@ -15,222 +15,197 @@
 
 ---
 
-## 2. Technology Stack
-- **Framework**: Flutter 3.x (Dart 3.9+ / 3.x)
-- **Target Platform**: Android 7.0+ (API 24 to Android 16 / API 36)
-- **State Management**: [Riverpod 2.6.1](https://riverpod.dev) (`AsyncNotifierProvider`, `NotifierProvider`, `Provider`)
-- **Navigation & Routing**: [GoRouter 16.3.0](https://pub.dev/packages/go_router) with custom slide and fade transitions
-- **Network / HTTP Client**: [Dio 5.9.0](https://pub.dev/packages/dio) with interceptors for token auto-refresh and error handling
-- **Backend & Database**: [Supabase](https://supabase.com) (PostgREST API `/rest/v1`, GoTrue Auth `/auth/v1`, PostgreSQL with Row Level Security)
-- **Movie / TV Metadata**: [The Movie Database (TMDB) API](https://www.themoviedb.org) routed via a backend server proxy (`/api/tmdb-proxy`)
-- **Streaming Providers**: JustWatch data integrated via TMDB API
-- **Local Storage & Security**:
-  - `flutter_secure_storage 9.2.4` for auth tokens and encrypted user preferences
-  - File-based cache (`LocalCacheManager`) with TTL and in-flight request deduplication
-  - Offline sync engine (`OfflineMutationQueue`)
-- **Typography & Fonts**: `google_fonts 6.3.3` (Space Grotesk for headings, DM Sans for body)
-- **Image Caching**: `cached_network_image 3.4.1` with custom skeleton shimmer loaders
-- **Monitoring & Crash Reporting**: `sentry_flutter 8.14.2`
-- **Tactile & Motion**: Native platform haptics (`HapticFeedback`) and spring physics (`BouncyPressable`)
+## 2. Technology Stack & Dependencies
+
+### Core Framework & Runtime:
+- **Flutter SDK**: 3.x (Dart 3.9+ / 3.x)
+- **Target OS**: Android 7.0+ (minSdkVersion: 24, targetSdkVersion: 36, compileSdkVersion: 36)
+- **Native Android Engine**: Kotlin 2.2.20, Gradle 8.14.2, Android Gradle Plugin 8.11.1, NDK 28.2.13676358
+
+### Production Dependencies (from `pubspec.yaml`):
+- `flutter_riverpod: ^2.6.1` — State management (AsyncNotifier, Notifier, Provider, StreamProvider)
+- `go_router: ^16.1.0` (resolved `16.3.0`) — Declarative URL-driven navigation & custom page transitions
+- `dio: ^5.9.0` — HTTP networking, timeout handling, token auto-refresh interceptors
+- `flutter_secure_storage: ^9.2.4` — Encrypted key-value storage for OAuth tokens and session data
+- `google_fonts: ^6.2.1` (resolved `6.3.3`) — Runtime font loading (`Space Grotesk`, `DM Sans`)
+- `cached_network_image: ^3.4.1` — Network poster/backdrop caching with memory & disk cache
+- `sentry_flutter: ^8.14.2` — Crash reporting and error diagnostics
+- `url_launcher: ^6.3.1` — Safe external URL launching (trailer YouTube links, legal URLs)
+- `app_links: ^6.4.1` — Android deep linking and App Links (`/auth/callback`)
+- `crypto: ^3.0.6` — SHA-256 code verifier generation for PKCE OAuth 2.0 flow
+- `flutter_localizations` (SDK) — Internationalization delegates
 
 ---
 
-## 3. Repository Structure
-```
-cinetrekker-android/
-├── AI_RULES.md                   # Permanent AI agent operating guidelines
-├── PROJECT_CONTEXT.md            # Canonical current project state and project map (this file)
-├── ARCHITECTURE.md               # Technical architecture, system layers, and flow traces
-├── CHANGELOG.md                  # Chronological engineering log
-├── DEFINITION_OF_DONE.md         # Quality gates and completion checklist
-├── README.md                     # Public repository documentation
-├── pubspec.yaml                  # Flutter package definition and version (1.1.0+3)
-├── analysis_options.yaml         # Lint rules and static analysis configuration
-├── .env.example                  # Environment variable template
-├── android/                      # Native Android project (Gradle 8.14, AGP 8.11, Kotlin 2.2)
-│   ├── app/                      # App module, ProGuard rules, signing configurations
-│   └── key.properties            # Play App Signing keystore credentials (gitignored)
-├── assets/                       # Bundled static assets (logo, fallback graphics)
-├── docs/                         # Supabase RLS policies and SQL migrations
-│   ├── supabase_rls.md           # RLS specification and table documentation
-│   └── supabase_rls_apply.sql    # Executable SQL script for Supabase database
-├── lib/
-│   ├── main.dart                 # Application entry point, Sentry initialization, error zones
-│   ├── app.dart                  # CineTrekkerApp widget, MaterialApp.router, theme & text scaling
-│   ├── router/                   # GoRouter route declarations and navigation shell
-│   ├── shared/                   # Reusable UI widgets across features (pressables, loaders, cards)
-│   ├── core/                     # Foundational infrastructure layers
-│   │   ├── accessibility/        # TextScaleController, AppSemantics engine
-│   │   ├── api/                  # Dio clients, Supabase REST API, TMDB proxy service
-│   │   ├── auth/                 # AuthController (OAuth PKCE, session management, storage)
-│   │   ├── constants/            # Environment definitions, storage keys, constants
-│   │   ├── content_safety/       # Maturity ratings and adult content filtering
-│   │   ├── errors/               # User-friendly error parsing and crash fallback
-│   │   ├── localization/         # Multi-language locale controller (en, ar, fr, es, de, tr)
-│   │   ├── models/               # Core domain data models
-│   │   ├── motion/               # HapticService, motion tokens, spring curves
-│   │   ├── offline/              # OfflineMutationQueue and offline action replay
-│   │   ├── storage/              # LocalCacheManager and secure storage abstraction
-│   │   ├── theme/                # Light, Dark, and AMOLED OLED Pure Black themes
-│   │   └── widgets/              # Offline banner, startup config gate
-│   └── features/                 # Modular feature domains
-│       ├── home/                 # Main landing feed (trending, spotlight, rails)
-│       ├── search/               # Search screen, debounce, mood discovery chips
-│       ├── discover/             # Filter-driven discover matrix (genres, year, rating)
-│       ├── details/              # Title details, cast, trailers, 9:16 story card generator
-│       ├── watchlist/            # Library, multi-select batch actions, CSV/JSON export
-│       ├── tv_tracking/          # TV season/episode tracker, air reminders, schedule modal
-│       ├── collections/          # Cinematic movie collections browser
-│       ├── achievements/         # Cinephile badges and unlockable achievements
-│       ├── parity/               # Analytics dashboard, stats charts, milestones
-│       ├── social/               # User profile, following/followers, comments, notifications
-│       ├── profile/              # Personal & public profile screens, favorite titles
-│       ├── settings/             # Settings, font scaler slider, theme, export, legal
-│       └── year_in_review/       # Annual retrospective summary
-└── test/                         # Unit and integration test suite
-```
+## 3. Environment Variables & Constants
 
----
+All runtime configuration is injected via `--dart-define` or `--dart-define-from-file=.env`:
 
-## 4. Application Architecture
-CineTrekker adopts a **feature-first, unidirectional data flow** architecture with Riverpod:
-1. **Presentation Layer**: Widgets (`ConsumerWidget` / `ConsumerStatefulWidget`) observe state from Riverpod providers. UI responds strictly to state and dispatches user actions to notifiers.
-2. **Controller Layer**: `AsyncNotifier` or `Notifier` classes encapsulate business logic, form validation, and UI state transitions.
-3. **Repository Layer**: Aggregates remote REST calls and local cache access, providing clean domain entities to controllers.
-4. **Data Layer**:
-   - `TmdbApiService` proxies metadata queries through the backend proxy with automatic caching.
-   - `SupabaseRestApi` performs authenticated CRUD operations over PostgREST with RLS.
-   - `OfflineMutationQueue` intercepts mutations when offline, writes optimistic state locally, and queues remote sync.
-
----
-
-## 5. Routes
-All routes are managed via `GoRouter` in `lib/router/app_router.dart`:
-
-### Shell Routes (Within Persistent Bottom Navigation):
-- `/`: `HomeShell` — Trending spotlight, top rated, recommendations feed.
-- `/discover`: `DiscoverScreen` — Multi-filter browse by genre, release year, rating.
-- `/search`: `SearchScreen` — Instant search with curated Mood Chips.
-- `/watchlist`: `WatchlistScreen` (tab 0: Watchlist, tab 1: Watched, tab 2: Favorites).
-- `/watched`: Direct link to `WatchlistScreen` with Watched tab active.
-- `/favorites`: Direct link to `WatchlistScreen` with Favorites tab active.
-- `/profile`: `ProfileScreen` — User profile, stats summary, lists, achievements.
-- `/settings`: `SettingsScreen` — Theme, font scaler, language, export, account deletion.
-- `/social`: `SocialScreen` — Community activity feed and notifications.
-- `/stats` / `/enhanced-stats`: `FeatureParityScreen(mode: 'stats')` — Analytics dashboard.
-- `/calendar`: `FeatureParityScreen(mode: 'calendar')` — Release calendar.
-- `/quests`: `FeatureParityScreen(mode: 'quests')` — CineQuests challenges.
-- `/trending`: `FeatureParityScreen(mode: 'trending')` — Extended trending list.
-- `/movies`: `FeatureParityScreen(mode: 'movies')` — Movies catalog.
-- `/tv`: `FeatureParityScreen(mode: 'tv')` — TV shows catalog.
-- `/genres`: `FeatureParityScreen(mode: 'genres')` — Genre grid.
-- `/accessibility`: `AccessibilityScreen` — Accessibility settings overview.
-
-### Full-Screen Routes (Overlay / Root Navigator):
-- `/login`, `/signup`, `/auth`, `/auth/reset`, `/reset`: Authentication flows.
-- `/auth/callback`: Deep link OAuth callback handler.
-- `/details/:mediaType/:mediaId`: Comprehensive movie/TV details, trailer modal, cast, story cards.
-- `/person/:personId`: Cast/crew filmography and biography.
-- `/user/:userId`: Public user profile, their watched titles and lists.
-- `/tv-tracking`: TV episode tracking dashboard and Airing Schedule sheet.
-- `/collections`: Official collections browser.
-- `/achievements`: Achievements and badges list.
-- `/year-in-review`: Year-in-review visual recap.
-- `/feedback`: In-app user feedback form.
-- `/privacy`, `/terms`, `/cookies`, `/about`: Legal and application info screens.
-
----
-
-## 6. Core Features
-1. **Movie & TV Details**: High-resolution backdrops, animated score ring, synopsis, streaming provider badges (JustWatch), trailer preview modal, cast rail, and recommendations.
-2. **In-App Trailer Preview**: 16:9 thumbnail preview modal with options to play in-app browser or launch external YouTube app.
-3. **9:16 Social Story Card Generator**: Exports 2.0× high-definition share cards with backdrop, poster, rating pill, genre tags, and CineTrekker watermark directly to clipboard.
-4. **Library & Watchlist Power Tools**:
-   - Multi-select batch mode with item counts, batch delete, and batch export.
-   - RFC-4180 CSV export and formatted JSON export.
-   - Offline mutation queue allowing instant local updates when disconnected.
-5. **TV Episode Tracking & Air Reminders**:
-   - Episode-level watched tracking per season.
-   - Live air countdown badges (`TODAY`, `SOON`, `📅 Airing in X days`).
-   - Airing Schedule bottom sheet displaying upcoming air dates sorted chronologically.
-6. **Cinephile Analytics**:
-   - 5-tier Cinephile Rank progression banner (Film Novice → Master Film Connoisseur).
-   - 4 KPI metric cards (Watch Time, Titles Seen, Average Score, Episodes).
-   - Interactive 6-month viewing timeline bar chart with tap-to-inspect tooltips.
-   - Interactive 5-tier rating distribution histogram with score breakdown.
-7. **Search & Mood Chips**: Real-time debounced search with curated quick-discovery mood chips (Trending, Sci-Fi, Award Winners, Feel Good, <90m, Horror).
-8. **"Surprise Me" Roulette**: Animated random picker selecting an unwatched title from your library.
-9. **Accessibility & Independent Typography Scaling**:
-   - Continuous 0.85× to 1.30× font scaling slider with quick presets and live sample preview card.
-   - Centralized `AppSemantics` engine for TalkBack announcements.
-
----
-
-## 7. Business Logic & Constraints
-- **Guest Mode vs. Signed-In**: CineTrekker functions fully in guest mode using local cache and storage. Once signed in via Supabase, cloud synchronization automatically takes place and the offline mutation queue flushes pending actions.
-- **Rating Scale**: User ratings are normalized to a 1.0–10.0 range (with 0.5 or 0.1 increments).
-- **Watchlist vs. Watched**: When a title is marked as watched, it is added to the watched list with an optional score and review date.
-- **TMDB Proxy Rule**: Never query `api.themoviedb.org` directly from the client. All TMDB traffic must pass through `Environment.apiBaseUrl + '/api/tmdb-proxy'` to preserve API key confidentiality.
-- **Row Level Security (RLS)**: User operations must strictly match `auth.uid() = user_id`. Client-side user ID filters are for convenience only; security is enforced at the database level.
-
----
-
-## 8. Data Model Summary
-Key models located in `lib/core/models/media_models.dart`:
-- `TmdbMedia`: Core representation of a movie or TV show.
-- `TmdbMediaDetails`: Extended details (runtime, genres, cast, videos, seasons, watch providers).
-- `UserMediaItem`: Library entry containing `mediaId`, `mediaType`, `status`, `rating`, `addedAt`, `watchedAt`.
-- `FollowedShowItem`: Tracked TV show with `lastWatchedSeason`, `lastWatchedEpisode`, `nextAirDate`, `nextEpisodeName`.
-- `WatchedEpisodeItem`: Specific logged episode with season and episode numbers.
-- `TmdbPersonDetails`: Cast/crew profile, biography, and filmography.
-- `OfflineMutation`: Queue entry with `id`, `type`, `payload`, and `created_at`.
-- `CineTrekkerAuthSession`: User session with `accessToken`, `refreshToken`, `expiresAt`, `user`.
-
----
-
-## 9. Authentication & Security
-- **Authentication Method**: Supabase Auth (GoTrue REST API) with OAuth 2.0 PKCE.
-- **Supported Providers**: Email/password, Google OAuth, GitHub OAuth.
-- **Tokens**: Stored securely using `flutter_secure_storage`. Automatically refreshed on 401 response via Dio interceptor.
-- **Environment Ingestion**: Injected strictly via `--dart-define` or `--dart-define-from-file=.env`. No secrets exist in client code.
-- **Content Safety**: Maturity rating filters (`G`, `PG`, `PG-13`, `R`, `NC-17`) stored in `ContentSafetyController` to filter adult content.
-
----
-
-## 10. Design System & Tokens
-- **Primary Color**: Signature CineTrekker Red (`#E50914`).
-- **Surface Modes**:
-  - Light: Clean editorial surfaces (`#F8F9FA`).
-  - Dark: Deep cinematic charcoal (`#121212`).
-  - AMOLED: Pure black (`#000000`) for OLED power efficiency.
-- **Typography**:
-  - Headings: `GoogleFonts.spaceGrotesk` (weights 600, 700, 800).
-  - Body / Subtitles: `GoogleFonts.dmSans` (weights 400, 500, 600).
-- **Motion Tokens** (`lib/core/motion/motion_tokens.dart`):
-  - Fast: 150ms (`Curves.easeOutCubic`)
-  - Medium: 250ms (`Curves.easeInOutCubic`)
-  - Emphasis: 400ms (`Curves.easeOutBack`)
-  - Page Transitions: 240ms slide-up & fade
-- **Haptics**: Centralized in `Haptics` (`selection`, `light`, `buttonTap`, `addToWatchlist`, etc.).
-
----
-
-## 11. Known Issues & Tech Debt
-- None currently blocking.
-- `flutter-sdk` and Gradle wrapper display deprecation warnings for future Kotlin 2.3+ / Gradle 9+ upgrades. Build succeeds cleanly with zero issues.
-
----
-
-## 12. Project Map (Where to Look)
-
-| Feature / Area | Primary Files | Supporting Files | Tests |
+| Key | Mandatory | Description | Fallback / Behavior |
 |---|---|---|---|
-| **Auth & Session** | `lib/core/auth/auth_controller.dart` | `lib/core/auth/auth_session.dart`, `lib/features/auth/presentation/auth_screen.dart` | `test/core/auth/auth_session_test.dart` |
-| **Movie / TV Details** | `lib/features/details/presentation/details_screen.dart` | `lib/features/details/presentation/details_controller.dart`, `lib/core/api/tmdb_api_service.dart` | Manual / Widget verification |
-| **Watchlist & Library** | `lib/features/watchlist/presentation/watchlist_screen.dart` | `lib/features/watchlist/data/user_library_repository.dart`, `lib/core/offline/offline_mutation_queue.dart` | Integration tests |
-| **TV Tracking & Air Dates**| `lib/features/tv_tracking/presentation/tv_tracking_screen.dart` | `lib/features/tv_tracking/presentation/tv_tracking_controller.dart`, `lib/core/models/media_models.dart` | Integration tests |
-| **Analytics & Stats** | `lib/features/parity/presentation/feature_parity_screen.dart` | `lib/features/watchlist/data/user_library_repository.dart` | Manual verification |
-| **Theme & Typography** | `lib/features/settings/presentation/settings_screen.dart` | `lib/core/theme/theme_controller.dart`, `lib/core/accessibility/text_scale_controller.dart`, `lib/app.dart` | `flutter analyze` |
-| **Routing & Navigation** | `lib/router/app_router.dart` | `lib/shared/widgets/app_scaffold.dart`, `lib/features/home/presentation/home_shell.dart` | `test/core/analytics_observer_test.dart` |
+| `CINETREKKER_SUPABASE_URL` | **Yes** | Base URL for Supabase backend project | App shows config error if missing |
+| `CINETREKKER_SUPABASE_ANON_KEY`| **Yes** | Anonymous client API key for Supabase PostgREST/Auth | App shows config error if missing |
+| `CINETREKKER_API_BASE_URL` | **Yes** | Base URL for backend server proxy (`https://cinetrekker.vercel.app`) | Routes `/api/tmdb-proxy` & `/api/feedback` |
+| `CINETREKKER_SENTRY_DSN` | No | Sentry DSN endpoint for crash analytics | If omitted, crashes log locally only |
+
+### Storage Keys (`AppConstants` in `lib/core/constants/app_constants.dart`):
+- `cinetrekker_theme_style`: Theme choice (`system`, `light`, `dark`, `oled`).
+- `cinetrekker_text_scale`: Preset text scale (`system`, `large`, `xLarge`).
+- `cinetrekker_font_size_scale`: Fine-grained text scaling multiplier (`0.85` to `1.30`).
+- `cinetrekker_locale_style`: Active locale (`system`, `en`, `ar`, `fr`, `es`, `de`, `tr`).
+- `cinetrekker_auth_session`: Encrypted JSON representation of `CineTrekkerAuthSession`.
+- `cinetrekker_content_safety`: Adult content filtering and maturity ratings.
+- `cinetrekker_reduced_motion`: Reduced motion override (`system`, `standard`, `reduced`).
+
+---
+
+## 4. Complete Riverpod Provider Registry
+
+The application maintains 35 Riverpod providers:
+
+| Provider Name | Type | Purpose | File Location |
+|---|---|---|---|
+| `apiClientProvider` | `Provider<Dio>` | Base Dio client pointing to `apiBaseUrl` | `lib/core/api/api_client.dart` |
+| `tmdbApiServiceProvider` | `Provider<TmdbApiService>` | TMDB proxy client with in-flight deduplication & 24h cache | `lib/core/api/tmdb_api_service.dart` |
+| `supabaseRestApiProvider` | `Provider<SupabaseRestApi>` | Supabase PostgREST client with 401 token auto-refresh | `lib/core/api/supabase_rest_api.dart` |
+| `authControllerProvider` | `AsyncNotifierProvider<AuthController, CineTrekkerAuthSession?>` | PKCE OAuth 2.0, sign in/up, session refresh, secure storage | `lib/core/auth/auth_controller.dart` |
+| `themeControllerProvider` | `NotifierProvider<ThemeController, CineTrekkerThemeStyle>` | Light, Dark, OLED Pure Black theme state | `lib/core/theme/theme_controller.dart` |
+| `textScaleControllerProvider` | `NotifierProvider<TextScaleController, CineTrekkerTextScaleStyle>` | 3-step text scale preset state | `lib/core/accessibility/text_scale_controller.dart` |
+| `fontSizeScaleControllerProvider` | `NotifierProvider<FontSizeScaleController, double>` | Continuous 0.85×–1.30× font scaling state | `lib/core/accessibility/text_scale_controller.dart` |
+| `reducedMotionControllerProvider` | `NotifierProvider<ReducedMotionController, CineTrekkerMotionStyle>` | Reduced motion and animation preferences | `lib/core/accessibility/reduced_motion_controller.dart` |
+| `localeControllerProvider` | `NotifierProvider<LocaleController, CineTrekkerLocaleStyle>` | Active app locale and language selection | `lib/core/localization/locale_controller.dart` |
+| `tmdbLanguageProvider` | `Provider<String>` | Language code passed to TMDB proxy | `lib/core/localization/locale_controller.dart` |
+| `appLocalizationsProvider` | `Provider<AppLocalizations>` | Localized string catalog lookup | `lib/core/localization/app_localizations.dart` |
+| `contentSafetyControllerProvider`| `NotifierProvider<ContentSafetyController, CineTrekkerContentSafety>`| Maturity rating and adult content filtering | `lib/core/content_safety/content_safety_controller.dart` |
+| `connectivityProvider` | `StreamProvider<bool>` | Live network connectivity listener | `lib/core/widgets/offline_banner.dart` |
+| `analyticsServiceProvider` | `Provider<AnalyticsService>` | Navigation and interaction analytics logger | `lib/core/utils/analytics_service.dart` |
+| `analyticsObserverProvider` | `Provider<AnalyticsObserver>` | GoRouter route observation adapter | `lib/core/utils/analytics_service.dart` |
+| `appRouterProvider` | `Provider<GoRouter>` | Declarative router configuration | `lib/router/app_router.dart` |
+| `homeControllerProvider` | `AsyncNotifierProvider<HomeController, HomeFeedData>` | Landing feed (spotlight, trending, top rated) | `lib/features/home/presentation/home_controller.dart` |
+| `homeRepositoryProvider` | `Provider<HomeRepository>` | Multi-rail TMDB aggregator | `lib/features/home/data/home_repository.dart` |
+| `searchControllerProvider` | `NotifierProvider<SearchController, SearchState>` | Debounced multi-search and mood filters | `lib/features/search/presentation/search_controller.dart` |
+| `discoverControllerProvider` | `NotifierProvider<DiscoverController, DiscoverState>` | Multi-criteria discover matrix | `lib/features/discover/presentation/discover_controller.dart` |
+| `detailsControllerProvider` | `NotifierProvider<DetailsController, DetailsState>` | Media details, cast, recommendations, videos | `lib/features/details/presentation/details_controller.dart` |
+| `watchlistControllerProvider` | `NotifierProvider<WatchlistController, WatchlistState>` | Library items, tabs, filtering, batch selection | `lib/features/watchlist/presentation/watchlist_controller.dart` |
+| `userLibraryRepositoryProvider` | `Provider<UserLibraryRepository>` | Library repository with optimistic caching & offline queue | `lib/features/watchlist/data/user_library_repository.dart` |
+| `tvTrackingControllerProvider` | `NotifierProvider<TvTrackingController, TvTrackingState>` | TV progress, followed shows, air schedule | `lib/features/tv_tracking/presentation/tv_tracking_controller.dart` |
+| `collectionsControllerProvider` | `NotifierProvider<CollectionsController, CollectionsState>` | Curated and user collections | `lib/features/collections/presentation/collections_controller.dart` |
+| `collectionsRepositoryProvider` | `Provider<CollectionsRepository>` | Collections database repository | `lib/features/collections/data/collections_repository.dart` |
+| `achievementsControllerProvider` | `NotifierProvider<AchievementsController, AchievementsState>` | Gamified viewing achievements | `lib/features/achievements/presentation/achievements_controller.dart` |
+| `profileControllerProvider` | `NotifierProvider<ProfileController, ProfileState>` | Personal profile data, stats, favorites | `lib/features/profile/presentation/profile_controller.dart` |
+| `profileRepositoryProvider` | `Provider<ProfileRepository?>` | Profile database repository | `lib/features/profile/data/profile_repository.dart` |
+| `peopleControllerProvider` | `NotifierProvider<PeopleController, PeopleState>` | Following/followers network | `lib/features/social/presentation/people_controller.dart` |
+| `commentsControllerProvider` | `NotifierProvider<CommentsController, CommentsState>` | Title comments, reviews, likes | `lib/features/social/presentation/comments_controller.dart` |
+| `notificationsControllerProvider`| `NotifierProvider<NotificationsController, NotificationsState>`| User activity notifications | `lib/features/social/presentation/notifications_controller.dart` |
+| `socialRepositoryProvider` | `Provider<SocialRepository>` | Social database repository | `lib/features/social/data/social_repository.dart` |
+| `feedbackRepositoryProvider` | `Provider<FeedbackRepository>` | In-app feedback submission service | `lib/features/settings/data/feedback_repository.dart` |
+| `yearInReviewControllerProvider` | `NotifierProvider<YearInReviewController, YearInReviewState>` | Annual viewing retrospective | `lib/features/year_in_review/presentation/year_in_review_controller.dart` |
+
+---
+
+## 5. Database Schema & Tables (Supabase PostgreSQL)
+
+Authoritative SQL defined in `docs/supabase_rls_apply.sql`:
+
+1. **`public.profiles`**:
+   - Columns: `user_id` (PK, UUID), `display_name`, `bio`, `avatar_url`, `is_public` (bool), `show_watchlist` (bool), `show_stats` (bool), `allow_recommendations` (bool), `show_age` (bool), `favorite_genres` (int[]), `favorite_titles` (text[]), `maturity_rating`, `adult_content_enabled`, `strict_filtering_enabled`, `moderate_filtering_enabled`, `created_at`, `updated_at`.
+   - RLS: Public read for public profiles (`is_public = true or auth.uid() = user_id`); owner insert/update/delete.
+2. **`public.user_watchlist`**:
+   - Columns: `id` (int), `user_id` (UUID), `media_id` (int), `media_type` (text), `title`, `poster_path`, `backdrop_path`, `vote_average` (numeric), `release_date`, `added_at` (timestamp).
+   - RLS: Owner-only select, insert, update, delete (`auth.uid() = user_id`).
+3. **`public.user_watched`**:
+   - Columns: `id` (int), `user_id` (UUID), `media_id` (int), `media_type` (text), `title`, `poster_path`, `backdrop_path`, `vote_average`, `release_date`, `rating` (numeric 1.0–10.0), `note`, `status`, `watched_at`, `added_at`.
+   - RLS: Owner-only select, insert, update, delete (`auth.uid() = user_id`).
+4. **`public.followed_shows`**:
+   - Columns: `user_id` (UUID), `show_id` (int), `show_title`, `poster_path`, `last_watched_season` (int), `last_watched_episode` (int), `next_air_date` (ISO date), `next_episode_name`, `created_at`.
+   - RLS: Owner-only select, insert, update, delete.
+5. **`public.watched_episodes`**:
+   - Columns: `user_id` (UUID), `show_id` (int), `season_number` (int), `episode_number` (int), `watched_at`.
+   - RLS: Owner-only select, insert, delete.
+6. **`public.comments`**:
+   - Columns: `id` (UUID), `user_id` (UUID), `media_type`, `media_id` (int), `content`, `rating`, `contains_spoiler` (bool), `likes_count` (int), `created_at`.
+   - RLS: Authenticated read (`true`); author insert/update/delete (`auth.uid() = user_id`).
+7. **`public.comment_likes`**:
+   - Columns: `user_id` (UUID), `comment_id` (UUID), `created_at`.
+   - RLS: Authenticated read; owner insert/delete.
+8. **`public.notifications`**:
+   - Columns: `id` (UUID), `user_id` (UUID), `type`, `message`, `data` (jsonb), `is_read` (bool), `created_at`.
+   - RLS: Owner-only select, update, delete (`auth.uid() = user_id`).
+9. **`public.user_follows` / `public.follows`**:
+   - Columns: `follower_id` (UUID), `following_id` (UUID), `created_at`.
+   - RLS: Authenticated read; insert requires `auth.uid() = follower_id`; delete allows either party.
+10. **`public.collections` & `public.collection_items`**:
+    - Columns: `id`, `user_id`, `name`, `description`, `item_count`, `created_at`, `updated_at`.
+    - RLS: Owner-only CRUD for custom user collections.
+
+---
+
+## 6. Complete Routes Map
+
+All routes in `lib/router/app_router.dart`:
+
+### Full-Screen Routes (Root Navigator):
+- `/login`: `AuthScreen(initialMode: AuthMode.signIn)`
+- `/signup`: `AuthScreen(initialMode: AuthMode.signUp)`
+- `/auth`: `AuthScreen()`
+- `/auth/reset` & `/reset`: `AuthScreen(initialMode: AuthMode.reset)`
+- `/auth/callback`: `AuthScreen()` (OAuth deep link callback handler)
+- `/details/:mediaType/:mediaId`: `DetailsScreen(mediaType, mediaId, heroTag)`
+- `/person/:personId`: `PersonDetailScreen(personId)`
+- `/user/:userId`: `PublicProfileScreen(userId)`
+- `/tv-tracking`: `TvTrackingScreen`
+- `/collections`: `CollectionsScreen`
+- `/achievements`: `AchievementsScreen`
+- `/year-in-review`: `YearInReviewScreen`
+- `/feedback`: `FeedbackScreen`
+- `/privacy`: `PrivacyPolicyScreen`
+- `/terms`: `TermsScreen`
+- `/cookies`: `CookiesScreen`
+- `/about`: `AboutScreen`
+
+### Shell Routes (Persistent Bottom Nav):
+- `/`: `HomeShell`
+- `/discover`: `DiscoverScreen`
+- `/search`: `SearchScreen`
+- `/watchlist`: `WatchlistScreen(initialTab: 0)` (Watchlist tab)
+- `/watched`: `WatchlistScreen(initialTab: 1)` (Watched tab)
+- `/favorites`: `WatchlistScreen(initialTab: 2)` (Favorites tab)
+- `/profile`: `ProfileScreen`
+- `/settings`: `SettingsScreen`
+- `/social`: `SocialScreen`
+- `/following`: `PeopleScreen`
+- `/notifications`: `SocialScreen`
+- `/accessibility`: `AccessibilityScreen`
+- `/stats` & `/enhanced-stats`: `FeatureParityScreen(mode: 'stats')`
+- `/calendar`: `FeatureParityScreen(mode: 'calendar')`
+- `/quests`: `FeatureParityScreen(mode: 'quests')`
+- `/trending`: `FeatureParityScreen(mode: 'trending')`
+- `/recommendations`: `FeatureParityScreen(mode: 'recommendations')`
+- `/upcoming`: `FeatureParityScreen(mode: 'upcoming')`
+- `/movies`: `FeatureParityScreen(mode: 'movies')`
+- `/tv`: `FeatureParityScreen(mode: 'tv')`
+- `/genres`: `FeatureParityScreen(mode: 'genres')`
+- `/decades`: `FeatureParityScreen(mode: 'decades')`
+- `/awards`: `FeatureParityScreen(mode: 'awards')`
+- `/watch-history`: `FeatureParityScreen(mode: 'watch-history')`
+- `/print-watchlist`: `FeatureParityScreen(mode: 'print-watchlist')`
+
+---
+
+## 7. Project Map (Where to Look)
+
+| Feature / Task | Primary File | Supporting Files | Tests |
+|---|---|---|---|
+| **Authentication & OAuth** | `lib/core/auth/auth_controller.dart` | `lib/core/auth/auth_session.dart`, `lib/features/auth/presentation/auth_screen.dart` | `test/core/auth/auth_session_test.dart` |
+| **Movie / TV Details Screen**| `lib/features/details/presentation/details_screen.dart` | `lib/features/details/presentation/details_controller.dart`, `lib/core/api/tmdb_api_service.dart` | Manual / Widget verification |
+| **In-App Trailers & Story Cards**| `lib/features/details/presentation/details_screen.dart` | `lib/core/motion/haptic_service.dart`, `lib/core/accessibility/app_semantics.dart` | Manual verification |
+| **Watchlist & Batch Actions**| `lib/features/watchlist/presentation/watchlist_screen.dart` | `lib/features/watchlist/data/user_library_repository.dart`, `lib/core/offline/offline_mutation_queue.dart` | Integration tests |
+| **TV Tracking & Air Reminders**| `lib/features/tv_tracking/presentation/tv_tracking_screen.dart`| `lib/features/tv_tracking/presentation/tv_tracking_controller.dart`, `lib/core/models/media_models.dart` | Integration tests |
+| **Cinephile Analytics & Charts**| `lib/features/parity/presentation/feature_parity_screen.dart` | `lib/features/watchlist/data/user_library_repository.dart` | Manual verification |
+| **Search & Mood Chips** | `lib/features/search/presentation/search_screen.dart` | `lib/features/search/presentation/search_controller.dart` | Manual verification |
+| **Font Scaling & Accessibility**| `lib/features/settings/presentation/settings_screen.dart` | `lib/core/accessibility/text_scale_controller.dart`, `lib/core/accessibility/app_semantics.dart`, `lib/app.dart` | `flutter analyze` |
+| **Theme & AMOLED Black** | `lib/core/theme/theme_controller.dart` | `lib/core/theme/app_theme.dart`, `lib/app.dart` | `flutter analyze` |
+| **Routing & Shell** | `lib/router/app_router.dart` | `lib/shared/widgets/app_scaffold.dart`, `lib/features/home/presentation/home_shell.dart` | `test/core/analytics_observer_test.dart` |
 | **Supabase REST & RLS** | `lib/core/api/supabase_rest_api.dart` | `docs/supabase_rls.md`, `docs/supabase_rls_apply.sql` | `test/core/api/supabase_rest_api_test.dart` |
-| **Accessibility Engine** | `lib/core/accessibility/app_semantics.dart` | `lib/core/accessibility/text_scale_controller.dart` | `flutter analyze` |
+| **Social, Comments & Follows**| `lib/features/social/presentation/social_screen.dart` | `lib/features/social/data/social_repository.dart`, `lib/features/social/presentation/comments_controller.dart` | `test/features/social/social_repository_test.dart` |
+| **In-App User Feedback** | `lib/features/settings/presentation/feedback_screen.dart` | `lib/features/settings/data/feedback_repository.dart` | Manual verification |

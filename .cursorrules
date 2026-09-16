@@ -2,12 +2,13 @@
 
 Before making any code modifications in this workspace, you MUST review the canonical documentation:
 - AI_RULES.md — Engineering authority and core principles
-- PROJECT_CONTEXT.md — Current system state and feature map
+- PROJECT_CONTEXT.md — Current system state, provider registry, and feature map
 - ARCHITECTURE.md — System layers, offline queue, and technical invariants
 - DEFINITION_OF_DONE.md — Quality gates and completion checklist
 
 Key Standards:
 - Do not guess or invent APIs, models, or routes.
-- Reuse widgets in `lib/shared/widgets/` and services in `lib/core/`.
+- Reuse widgets in `lib/shared/widgets/` (`BouncyPressable`, `AppCachedImage`, `AppErrorCard`) and services in `lib/core/`.
+- TMDB requests strictly route through `/api/tmdb-proxy` on `Environment.apiBaseUrl`.
 - Verify with `flutter analyze` and `flutter test`.
 - Keep `PROJECT_CONTEXT.md` and `CHANGELOG.md` updated after changes.

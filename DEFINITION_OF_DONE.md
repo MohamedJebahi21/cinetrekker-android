@@ -11,22 +11,32 @@ Any engineering task, bug fix, or feature implementation performed on this repos
 - [ ] Offline resilience is verified (actions either execute from local cache or enqueue to `OfflineMutationQueue`).
 
 ## 2. Code Quality & Standards
-- [ ] `flutter analyze` passes with **0 errors, 0 warnings, 0 fatal infos**.
-- [ ] Code strictly reuses existing design tokens, models, and shared components from `lib/shared/widgets/`.
+- [ ] Static analysis passes with **0 errors, 0 warnings, 0 fatal infos**:
+  ```bash
+  flutter analyze
+  ```
+- [ ] Code strictly reuses existing design tokens, models, and shared components from `lib/shared/widgets/`:
+  - `BouncyPressable` for tactile spring buttons and cards
+  - `AppCachedImage` for shimmer-loaded network images
+  - `AppErrorCard` for standardized error recovery
+  - `AppScaffold` for shell layouts
 - [ ] No duplicate abstractions or parallel data stores are introduced.
-- [ ] Code is formatted according to standard Dart conventions (`dart format`).
+- [ ] Code is formatted according to standard Dart conventions:
+  ```bash
+  dart format .
+  ```
 - [ ] No dead code, temporary debug prints (`print()`), or commented-out code blocks left behind.
 
 ## 3. UI, Tactile & Accessibility
 - [ ] **Complete State Handling**:
-  - [ ] **Loading State**: Displays skeleton shimmer or subtle indicator.
+  - [ ] **Loading State**: Displays skeleton shimmer (`SkeletonLoader`) or subtle indicator.
   - [ ] **Empty State**: Displays clear iconography, friendly copy, and primary action.
   - [ ] **Error State**: Displays `AppErrorCard` with recoverable retry button.
   - [ ] **Success State**: Displays floating SnackBar and haptic confirmation.
-- [ ] **Tactile Feedback**: Interactive touch targets trigger appropriate `Haptics` (selection, tap, success).
-- [ ] **Spring Physics**: Interactive buttons and cards use `BouncyPressable` or token-governed curves.
+- [ ] **Tactile Feedback**: Interactive touch targets trigger appropriate `Haptics` (`selection`, `light`, `buttonTap`, `addToWatchlist`, etc.).
+- [ ] **Spring Physics**: Interactive buttons and cards use `BouncyPressable`.
 - [ ] **Typography & Text Scaling**: Verified to render without layout overflow or text clipping at scales from **0.85× up to 1.30×**.
-- [ ] **Screen Reader (TalkBack)**: Important mutations announce state changes via `AppSemantics`. Custom buttons have descriptive `Semantics` labels.
+- [ ] **Screen Reader (TalkBack)**: Important mutations announce state changes via `AppSemantics` (`SemanticsService.sendAnnouncement`). Interactive buttons have descriptive `Semantics` labels.
 
 ## 4. Security & Privacy
 - [ ] No hardcoded API keys, bearer tokens, or sensitive credentials exist in code or commit history.
@@ -41,9 +51,15 @@ Any engineering task, bug fix, or feature implementation performed on this repos
 - [ ] Unnecessary widget rebuilds and provider invalidations are avoided.
 
 ## 6. Testing & Automated Verification
-- [ ] `flutter test` passes with 100% test success.
+- [ ] Full test suite passes:
+  ```bash
+  flutter test
+  ```
 - [ ] New core logic, utility methods, or models include corresponding unit tests under `test/`.
-- [ ] If native Android build files (`android/`) are touched, verify compilation with `flutter build apk --release`.
+- [ ] If native Android build files (`android/`) are touched, verify compilation:
+  ```bash
+  flutter build apk --release
+  ```
 
 ## 7. Mandatory Documentation Protocol
 - [ ] **`PROJECT_CONTEXT.md`** updated to reflect feature changes, status, or known issues.

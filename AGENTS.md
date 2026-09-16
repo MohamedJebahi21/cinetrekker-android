@@ -22,3 +22,4 @@ UNDERSTAND ──> INVESTIGATE ──> PLAN ──> IMPLEMENT ──> TEST ─�
 - Static Analysis: `flutter analyze`
 - Test Suite: `flutter test`
 - Run App: `flutter run --dart-define-from-file=.env`
+- Build Release APK: `flutter build apk --release`

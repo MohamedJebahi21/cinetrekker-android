@@ -21,30 +21,40 @@ Every task must strictly proceed through the 7 engineering stages:
 UNDERSTAND ──> INVESTIGATE ──> PLAN ──> IMPLEMENT ──> TEST ──> VERIFY ──> DOCUMENT
 ```
 1. **UNDERSTAND**: Clarify the requirement, user goals, and boundaries.
-2. **INVESTIGATE**: Search and inspect existing code, models, controllers, and tests. Trace the full flow.
+2. **INVESTIGATE**: Search and inspect existing code, models, controllers, and tests. Trace the full flow through UI → Controller → Repository → API/Cache.
 3. **PLAN**: Choose the cleanest architectural approach matching existing patterns. Identify affected files.
 4. **IMPLEMENT**: Write focused, clean code adhering to existing conventions.
 5. **TEST**: Run automated tests (`flutter test`) and static analysis (`flutter analyze`).
-6. **VERIFY**: Check edge cases, error states, empty states, text scaling, haptics, and TalkBack semantics.
+6. **VERIFY**: Check edge cases, error states, empty states, text scaling (0.85×–1.30×), haptics (`Haptics`), and TalkBack semantics (`AppSemantics`).
 7. **DOCUMENT**: Update `PROJECT_CONTEXT.md`, `CHANGELOG.md`, and `ARCHITECTURE.md` as required.
 
 ## 4. No Guessing Principle
 AI agents must NEVER assume or invent:
-- File paths or directory locations
-- REST endpoints or backend proxy routes
-- Database tables, columns, or relations
-- Environment variables or secrets
-- Packages or external dependencies
-- Business rules or licensing constraints
-- Authentication states or authorization bypasses
+- File paths or directory locations (always check `PROJECT_CONTEXT.md` Project Map).
+- REST endpoints or backend proxy routes (TMDB proxy is strictly `/api/tmdb-proxy`, feedback is `/api/feedback`, Supabase is `/rest/v1` and `/auth/v1`).
+- Database tables or columns (refer to `docs/supabase_rls.md` and `docs/supabase_rls_apply.sql`).
+- Environment variables (only `CINETREKKER_SUPABASE_URL`, `CINETREKKER_SUPABASE_ANON_KEY`, `CINETREKKER_API_BASE_URL`, and optional `CINETREKKER_SENTRY_DSN`).
+- Dependencies (check `pubspec.yaml` and `pubspec.lock`).
+- Business rules or licensing constraints (TMDB attribution is mandatory in Settings).
+- Authentication states or authorization bypasses.
 
-If uncertain, query the codebase using grep, file inspection, or terminal verification.
+If uncertain, query the codebase using ripgrep, file inspection, or terminal verification.
 
 ## 5. Existing-Code-First Principle
 Before creating any new widget, service, helper, provider, or abstraction:
 - Search the repository for existing implementations that can be reused or extended.
-- Reuse shared components from `lib/shared/widgets/` (e.g., `BouncyPressable`, `AppCachedImage`, `AppErrorCard`, `SkeletonLoader`).
-- Reuse core services from `lib/core/` (e.g., `Haptics`, `AppSemantics`, `LocalCacheManager`, `OfflineMutationQueue`, `describeAppError`).
+- Reuse shared components from `lib/shared/widgets/`:
+  - `BouncyPressable`: Spring physics press interaction.
+  - `AppCachedImage`: Shimmer-backed network image with error fallbacks.
+  - `AppErrorCard`: Standardized error card with retry button.
+  - `AppScaffold`: Persistent shell wrapper with navigation rail/bar.
+  - `SkeletonLoader`: Shimmer loading placeholders.
+- Reuse core services from `lib/core/`:
+  - `Haptics` (`lib/core/motion/haptic_service.dart`): Centralized platform haptic feedback.
+  - `AppSemantics` (`lib/core/accessibility/app_semantics.dart`): Screen reader announcements.
+  - `LocalCacheManager` (`lib/core/storage/local_cache_manager.dart`): Persistent file cache with TTL.
+  - `OfflineMutationQueue` (`lib/core/offline/offline_mutation_queue.dart`): Optimistic mutation queue.
+  - `describeAppError` (`lib/core/errors/app_error_messages.dart`): User-friendly error message sanitization.
 - Avoid duplicate logic, parallel state stores, or redundant abstraction layers.
 
 ## 6. Minimal-Change Principle
@@ -82,8 +92,8 @@ Before creating any new widget, service, helper, provider, or abstraction:
 ## 10. Verification & Quality Gates
 Before declaring any task complete:
 - Run `flutter analyze` — Must report **0 errors, 0 warnings**.
-- Run `flutter test` — All tests must pass.
-- Verify release/build integrity when touching native Android configurations.
+- Run `flutter test` — All 22 tests must pass.
+- Verify release/build integrity when touching native Android configurations (`flutter build apk --release`).
 
 ## 11. Self-Maintaining Documentation Protocol
 After completing ANY meaningful change:

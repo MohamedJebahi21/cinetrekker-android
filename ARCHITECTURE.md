@@ -1,4 +1,4 @@
-# CineTrekker Android — Technical Architecture
+# CineTrekker Android — Technical Architecture & Invariants
 
 This document details the architectural design, component layers, data flows, and technical invariants of the CineTrekker Android codebase.
 
@@ -43,29 +43,35 @@ CineTrekker is architected in four distinct layers following a unidirectional da
 
 ### A. TMDB Movie/TV Metadata Fetch Flow (with Caching & In-Flight Deduplication)
 ```
-User navigates to Title Details
+User navigates to Title Details (/details/:mediaType/:mediaId)
    │
    ▼
-DetailsScreen reads detailsControllerProvider(mediaType, mediaId)
+DetailsScreen reads detailsControllerProvider
    │
    ▼
-DetailsController calls TmdbApiService.fetchDetails(mediaType, mediaId)
+DetailsController.load(mediaType: mediaType, mediaId: mediaId)
    │
-   ├─► Check in-flight request map (_inFlightRequests)
-   │     └─► If pending: return existing Future (Deduplication)
-   │
-   ├─► Execute HTTP GET to /api/tmdb-proxy on Environment.apiBaseUrl
-   │     │
-   │     ├─► Success:
-   │     │     ├─► Asynchronously write payload to LocalCacheManager (TTL: 24h)
-   │     │     └─► Parse into TmdbMediaDetails model
-   │     │
-   │     └─► Network / Timeout Error:
-   │           ├─► Check LocalCacheManager for cached snapshot
-   │           ├─► If cache hit: return cached data (Graceful degradation)
-   │           └─► If cache miss: throw user-friendly AppError
    ▼
-DetailsController updates state with AsyncData / AsyncError
+TmdbApiService.fetchDetails(mediaType, mediaId)
+   │
+   ▼
+TmdbApiService._fetchJson(endpoint)
+   │
+   ├─► 1. Check in-flight request map (_inFlightRequests[cacheKey])
+   │      └─► If pending: return existing Future (Deduplicates concurrent bursts)
+   │
+   ├─► 2. Execute HTTP GET to /api/tmdb-proxy on Environment.apiBaseUrl
+   │      │
+   │      ├─► Success (HTTP 200):
+   │      │     ├─► Asynchronously write payload to LocalCacheManager (TTL: 24h)
+   │      │     └─► Parse JSON into TmdbMediaDetails domain model
+   │      │
+   │      └─► Network / Timeout / Socket Error:
+   │            ├─► Read LocalCacheManager snapshot for cacheKey
+   │            ├─► If cache hit: return cached data (Graceful offline degradation)
+   │            └─► If cache miss: throw user-friendly AppError
+   ▼
+DetailsController updates state (DetailsState(details: data, isLoading: false))
    ▼
 DetailsScreen renders UI / AppErrorCard with retry
 ```
@@ -78,22 +84,22 @@ User taps "Add to Watchlist" or "Mark as Watched"
 WatchlistController calls UserLibraryRepository.addToWatchlist(...)
    │
    ├─► 1. Optimistic Local Write:
-   │      Update LocalMediaListStorage immediately so UI reflects change instantly
+   │      Updates LocalMediaListStorage immediately so UI reflects change instantly
    │
    ├─► 2. Check Authentication & Network:
    │      │
    │      ├─► Signed-in & Online:
-   │      │     Send POST/UPSERT via SupabaseRestApi
+   │      │     Send POST /rest/v1/user_watchlist via SupabaseRestApi.upsertRow
    │      │
-   │      └─► Offline or Network Failure:
-   │            Enqueue mutation into OfflineMutationQueue
-   │            (stored persistently via LocalCacheManager)
+   │      └─► Offline or Network Glitch:
+   │            Enqueue OfflineMutation into OfflineMutationQueue
+   │            (stored persistently in file cache via LocalCacheManager)
    │
    ▼
-On next successful library load or network reconnect:
+On next successful library fetch or network reconnect:
    UserLibraryRepository._flushMutationQueue() iterates queue FIFO:
-   - For each OfflineMutation: execute remote Supabase call
-   - On success: remove from queue
+   - For each OfflineMutation: execute remote SupabaseRestApi call
+   - On success: remove mutation from OfflineMutationQueue
    - On error: stop flush and preserve remaining queue for next retry
 ```
 
@@ -103,34 +109,36 @@ App Startup (main.dart -> StartupConfigGate -> CineTrekkerApp)
    │
    ▼
 AuthController.build():
-   Read session JSON from FlutterSecureStorage
+   Read session JSON from FlutterSecureStorage (key: 'cinetrekker_auth_session')
    │
    ├─► Valid and unexpired: restore CineTrekkerAuthSession
    │
-   ├─► Expired but has refresh token:
+   ├─► Expired but has refreshToken:
    │      Execute POST /auth/v1/token?grant_type=refresh_token
    │      Update secure storage and restore session
    │
    └─► Invalid / empty: enter Guest Mode (session is null)
    │
 During App Execution (Dio Interceptor in SupabaseRestApi):
-   On 401 Unauthorized response from Supabase PostgREST:
+   On HTTP 401 Unauthorized response from Supabase PostgREST:
       1. Trigger AuthController.refreshSession()
-      2. If refreshed: update Authorization header and retry request seamlessly
-      3. If refresh fails: propagate 401 and prompt re-authentication
+      2. If refreshed: update Authorization header to 'Bearer $refreshedToken'
+      3. Replay request seamlessly via dio.fetch(requestOptions)
+      4. If refresh fails: propagate error to UI
 ```
 
 ---
 
 ## 3. Database Architecture & Row Level Security (RLS)
 
-All cloud data is hosted on Supabase (PostgreSQL) and accessed via PostgREST.
+All cloud data is hosted on Supabase (PostgreSQL) and accessed via PostgREST `/rest/v1`.
 
 ### Security Model:
-- **Zero Client-Side Trust**: Client passes `user_id` strictly for querying ergonomics, but PostgreSQL RLS guarantees that only rows where `auth.uid() = user_id` can be read or written.
+- **Zero Client-Side Trust**: Client passes `user_id` strictly for query convenience, but PostgreSQL RLS guarantees that only rows where `auth.uid() = user_id` can be read or written.
 - **Public Tables**: `public.profiles` allows public read access for users where `is_public = true`.
-- **Private Tables**: `watchlist`, `watched`, `tv_progress`, `favorites`, `notifications`, `collections_user` are strictly private to the authenticated owner.
+- **Private Tables**: `user_watchlist`, `user_watched`, `watched_episodes`, `followed_shows`, `notifications`, `collections` are strictly private to the authenticated owner (`auth.uid() = user_id`).
 - **Social Tables**: `comments` and `comment_likes` can be read by authenticated users, but mutations require `auth.uid() = user_id`.
+- **Follows Table**: `user_follows` enforces `auth.uid() = follower_id` on insert, and either party can delete the edge.
 
 Refer to `docs/supabase_rls.md` and `docs/supabase_rls_apply.sql` for the authoritative schema definitions.
 
@@ -139,7 +147,7 @@ Refer to `docs/supabase_rls.md` and `docs/supabase_rls_apply.sql` for the author
 ## 4. Routing & Shell Architecture
 
 The router in `lib/router/app_router.dart` uses **GoRouter** with a dual navigator hierarchy:
-- **`_rootNavigatorKey`**: Used for full-screen routes that overlay and hide the bottom navigation bar (e.g. `/details`, `/auth`, `/login`, `/tv-tracking`, `/feedback`).
+- **`_rootNavigatorKey`**: Used for full-screen routes that overlay and hide the bottom navigation bar (`/details/:mediaType/:mediaId`, `/person/:personId`, `/auth`, `/login`, `/tv-tracking`, `/feedback`, etc.).
 - **`ShellRoute` with `AppScaffold`**: Wraps core tabs (`/`, `/discover`, `/search`, `/watchlist`, `/profile`, `/settings`, `/social`) to maintain persistent bottom navigation and tab state.
 - **Predictive & Custom Transitions**:
   - `buildPageWithSlideTransition`: Slide-up + fade-in (240ms) for detail and modal pages.
@@ -153,4 +161,4 @@ The router in `lib/router/app_router.dart` uses **GoRouter** with a dual navigat
 1. **TMDB Secret Protection**: Never embed TMDB API tokens into client code or `.env`. The client must only ever query `/api/tmdb-proxy`.
 2. **Offline Resilience**: Guest mode and offline usage must always display cached content and allow local list edits. Do not block the app behind a mandatory login screen.
 3. **Typography Scaling**: Font size scaling operates on `MediaQuery.textScaler` in `lib/app.dart`. Widgets must use `GoogleFonts.spaceGrotesk` and `GoogleFonts.dmSans` without hardcoded line wrapping constraints that clip at 1.30× scale.
-4. **Haptics and Semantics**: User mutations (watchlist, favorites, rating submissions) must trigger tactile feedback via `Haptics` and screen-reader announcements via `AppSemantics`.
+4. **Haptics and Semantics**: User mutations (watchlist, favorites, rating submissions) must trigger tactile feedback via `Haptics` and screen-reader announcements via `AppSemantics` (`SemanticsService.sendAnnouncement`).
