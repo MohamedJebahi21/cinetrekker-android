@@ -1,5 +1,13 @@
 # CineTrekker Android — Engineering Changelog
 
+## 2026-09-21 — Release v1.1.2: Hotfix — Kotlin 2.2 + sentry_flutter compatibility
+
+### Fixed
+* **Kotlin 2.2 compile error**: `sentry_flutter` 8.14.2 shipped Kotlin sources targeting language version 1.6, which Kotlin 2.2.20 rejects. Upgraded `sentry_flutter` to `9.30.0` (fully Kotlin 2.2 compatible) and explicitly set `kotlinOptions { languageVersion = "1.9" }` in `android/app/build.gradle.kts`.
+* GitHub Actions release workflow now completes successfully and publishes a signed APK with secrets baked in.
+
+---
+
 ## 2026-09-21 — Release v1.1.1: Hotfix — Compile-time secrets injection
 
 ### Fixed
