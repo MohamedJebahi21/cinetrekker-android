@@ -1,5 +1,12 @@
 # CineTrekker Android — Engineering Changelog
 
+## 2026-09-21 — Release v1.1.1: Hotfix — Compile-time secrets injection
+
+### Fixed
+* **"Undefined secrets" startup error**: Release APK on GitHub was built before the `--dart-define-from-file` step was wired to GitHub Actions secrets. Rebuilt with all `CINETREKKER_*` secrets correctly injected at compile time via the release workflow. Bumped version to `1.1.1+4`.
+
+---
+
 ## 2026-09-14 — Release v1.1.0: Major Feature Upgrade & Flagship Experience
 
 ### Added
