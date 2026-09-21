@@ -20,7 +20,7 @@ dependencies:
   go_router: ^16.1.0
   url_launcher: ^6.3.1
   google_fonts: ^6.2.1
-  sentry_flutter: ^8.14.2
+  sentry_flutter: ^9.30.0
 
 dev_dependencies:
   flutter_test:
