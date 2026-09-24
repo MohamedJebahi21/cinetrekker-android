@@ -26,6 +26,7 @@ import '../../watchlist/presentation/watchlist_controller.dart';
 import '../../../core/accessibility/app_semantics.dart';
 import '../../../shared/widgets/skeleton_loaders.dart';
 import 'details_controller.dart';
+import 'ratings_badges.dart';
 
 class DetailsScreen extends ConsumerStatefulWidget {
   const DetailsScreen({
@@ -247,6 +248,13 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> {
                         _DetailsHeader(
                           details: state.details!,
                           heroTag: widget.heroTag,
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Enriched Ratings (Rotten Tomatoes, Metacritic, IMDb, TVMaze)
+                        RatingsBadges(
+                          imdbId: state.details!.imdbId,
+                          isTv: widget.mediaType == 'tv',
                         ),
                         const SizedBox(height: 16),
 

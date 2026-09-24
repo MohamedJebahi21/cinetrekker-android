@@ -357,12 +357,14 @@ class TmdbMediaDetails extends TmdbMedia {
     this.watchProviders,
     this.numberOfSeasons,
     this.numberOfEpisodes,
+    this.imdbId,
   });
 
   final int? runtime;
   final String? status;
   final String? tagline;
   final String? certification;
+  final String? imdbId;
   final List<TmdbGenre> genres;
   final List<TmdbCastMember> cast;
   final List<TmdbVideo> videos;
@@ -454,6 +456,11 @@ class TmdbMediaDetails extends TmdbMedia {
       }
     }
 
+    // Extract IMDb ID
+    final rawExt = json['external_ids'];
+    final imdbId = json['imdb_id'] as String? ??
+        (rawExt is Map ? rawExt['imdb_id'] as String? : null);
+
     return TmdbMediaDetails(
       id: base.id,
       mediaType: base.mediaType,
@@ -489,6 +496,7 @@ class TmdbMediaDetails extends TmdbMedia {
       videos: videosList,
       seasons: seasonsList,
       watchProviders: providers,
+      imdbId: imdbId,
     );
   }
 }
@@ -762,3 +770,97 @@ class WatchedEpisodeItem {
         watchedAt: json['watched_at'] as String?,
       );
 }
+
+class EnrichedRatings {
+  const EnrichedRatings({
+    this.imdbRating,
+    this.imdbVotes,
+    this.rottenTomatoes,
+    this.metascore,
+    this.awards,
+    this.boxOffice,
+  });
+
+  final String? imdbRating;
+  final String? imdbVotes;
+  final String? rottenTomatoes;
+  final String? metascore;
+  final String? awards;
+  final String? boxOffice;
+
+  bool get hasAnyRating =>
+      (rottenTomatoes != null && rottenTomatoes!.isNotEmpty) ||
+      (metascore != null && metascore!.isNotEmpty) ||
+      (imdbRating != null && imdbRating!.isNotEmpty);
+
+  factory EnrichedRatings.fromJson(Map<String, dynamic> json) => EnrichedRatings(
+    imdbRating: json['imdbRating'] as String?,
+    imdbVotes: json['imdbVotes'] as String?,
+    rottenTomatoes: json['rottenTomatoes'] as String?,
+    metascore: json['metascore'] as String?,
+    awards: json['awards'] as String?,
+    boxOffice: json['boxOffice'] as String?,
+  );
+}
+
+class NextEpisodeSchedule {
+  const NextEpisodeSchedule({
+    required this.name,
+    required this.airdate,
+    this.airtime,
+    required this.season,
+    required this.number,
+  });
+
+  final String name;
+  final String airdate;
+  final String? airtime;
+  final int season;
+  final int number;
+
+  factory NextEpisodeSchedule.fromJson(Map<String, dynamic> json) =>
+      NextEpisodeSchedule(
+        name: json['name'] as String? ?? 'TBA',
+        airdate: json['airdate'] as String? ?? '',
+        airtime: json['airtime'] as String?,
+        season: (json['season'] as num?)?.toInt() ?? 1,
+        number: (json['number'] as num?)?.toInt() ?? 1,
+      );
+}
+
+class TVSchedule {
+  const TVSchedule({
+    this.network,
+    this.days = const <String>[],
+    this.time,
+    this.nextEpisode,
+  });
+
+  final String? network;
+  final List<String> days;
+  final String? time;
+  final NextEpisodeSchedule? nextEpisode;
+
+  bool get hasSchedule =>
+      (network != null && network!.isNotEmpty) || nextEpisode != null;
+
+  factory TVSchedule.fromJson(Map<String, dynamic> json) {
+    final rawDays = json['days'];
+    final daysList = rawDays is List
+        ? rawDays.whereType<String>().toList(growable: false)
+        : const <String>[];
+
+    final nextEpObj = json['nextEpisode'];
+    final nextEp = nextEpObj is Map
+        ? NextEpisodeSchedule.fromJson(nextEpObj.cast<String, dynamic>())
+        : null;
+
+    return TVSchedule(
+      network: json['network'] as String?,
+      days: daysList,
+      time: json['time'] as String?,
+      nextEpisode: nextEp,
+    );
+  }
+}
+
