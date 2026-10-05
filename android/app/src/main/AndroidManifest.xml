@@ -33,6 +33,14 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="cinetrekker" />
             </intent-filter>
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="cinetrekker.vercel.app" android:pathPrefix="/movie" />
+                <data android:scheme="https" android:host="cinetrekker.vercel.app" android:pathPrefix="/tv" />
+            </intent-filter>
+
         </activity>
         <meta-data
             android:name="flutterEmbedding"
