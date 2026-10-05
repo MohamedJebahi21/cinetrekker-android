@@ -3,17 +3,26 @@ import 'package:flutter/material.dart';
 import '../../core/constants/environment.dart';
 
 class StartupConfigGate extends StatelessWidget {
-  const StartupConfigGate({super.key, required this.child});
+  const StartupConfigGate({
+    super.key,
+    required this.child,
+    @visibleForTesting this.isConfiguredOverride,
+    @visibleForTesting this.missingKeysOverride,
+  });
 
   final Widget child;
+  final bool? isConfiguredOverride;
+  final List<String>? missingKeysOverride;
 
   @override
   Widget build(BuildContext context) {
-    if (Environment.hasRequiredRuntimeConfig) {
+    final isConfigured = isConfiguredOverride ?? Environment.hasRequiredRuntimeConfig;
+
+    if (isConfigured) {
       return child;
     }
 
-    final missing = Environment.missingRuntimeConfigKeys;
+    final missing = missingKeysOverride ?? Environment.missingRuntimeConfigKeys;
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
@@ -36,7 +45,7 @@ class StartupConfigGate extends StatelessWidget {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        'Set the required runtime environment variables before running the app on your Samsung device. Placeholder values like example.com are treated as missing.',
+                        'Set the required runtime environment variables before running the app. Placeholder values like example.com are treated as missing.',
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
                       const SizedBox(height: 16),
