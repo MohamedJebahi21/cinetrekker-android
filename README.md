@@ -116,28 +116,23 @@ lib/
    cd cinetrekker-android
    ```
 
-2. **Copy the environment template**
-   ```bash
-   cp .env.example .env
-   ```
-
-3. **Fill in your environment variables** in `.env`:
-   ```env
-   CINETREKKER_SUPABASE_URL=https://your-project.supabase.co
-   CINETREKKER_SUPABASE_ANON_KEY=your-anon-key
-   CINETREKKER_API_BASE_URL=https://cinetrekker.vercel.app
-   CINETREKKER_SENTRY_DSN=
-   ```
-   > You will need a [Supabase](https://supabase.com) project and a [TMDB API key](https://www.themoviedb.org/settings/api) on the server proxy.  
-   > Config is injected at **build/run time** via `--dart-define` / `--dart-define-from-file`. It is **not** bundled as an APK asset.
-
-4. **Install dependencies**
+2. **Install dependencies**
    ```bash
    flutter pub get
    ```
 
-5. **Run the app**
+3. **Run the app (Zero-Config Development)**
+   The app includes pre-configured production fallbacks in code so you can run immediately:
    ```bash
+   flutter run
+   ```
+   Or press **F5** in VS Code to use the pre-configured `CineTrekker (Development)` launch profile.
+
+4. **Optional: Custom Environment Overrides**
+   To point to your own Supabase instance or staging backend:
+   ```bash
+   cp .env.example .env
+   # Edit .env with your custom credentials
    flutter run --dart-define-from-file=.env
    ```
 
