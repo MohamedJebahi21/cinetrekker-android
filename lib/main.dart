@@ -17,43 +17,50 @@ Future<void> main() async {
   unawaited(
     runZonedGuarded(
       () async {
-      try {
-        WidgetsFlutterBinding.ensureInitialized();
+        try {
+          WidgetsFlutterBinding.ensureInitialized();
 
-        CrashReportingService.instance.initialize(
-          sentryEnabled: Environment.hasSentryConfig,
-        );
+          CrashReportingService.instance.initialize(
+            sentryEnabled: Environment.hasSentryConfig,
+          );
 
-        ErrorWidget.builder = (_) => const AppCrashFallback();
+          ErrorWidget.builder = (_) => const AppCrashFallback();
 
-        const app = ProviderScope(
-          child: OAuthCallbackHost(child: CineTrekkerApp()),
-        );
+          const app = ProviderScope(
+            child: OAuthCallbackHost(child: CineTrekkerApp()),
+          );
 
-        if (Environment.hasSentryConfig) {
-          await SentryFlutter.init((options) {
-            options.dsn = Environment.sentryDsn;
-            options.environment = kReleaseMode ? 'production' : 'development';
-            options.tracesSampleRate = kReleaseMode ? 0.2 : 1.0;
-            options.sendDefaultPii = false;
-          }, appRunner: () => runApp(app));
-        } else {
-          runApp(app);
+          if (Environment.hasSentryConfig) {
+            await SentryFlutter.init((options) {
+              options.dsn = Environment.sentryDsn;
+              options.environment = kReleaseMode ? 'production' : 'development';
+              options.tracesSampleRate = kReleaseMode ? 0.2 : 1.0;
+              options.sendDefaultPii = false;
+            }, appRunner: () => runApp(app));
+          } else {
+            runApp(app);
+          }
+          if (!completer.isCompleted) {
+            completer.complete();
+          }
+        } catch (error, stack) {
+          if (!completer.isCompleted) {
+            completer.completeError(error, stack);
+          }
+          rethrow;
         }
-        if (!completer.isCompleted) completer.complete();
-      } catch (error, stack) {
-        if (!completer.isCompleted) completer.completeError(error, stack);
-        rethrow;
-      }
-    },
-    (error, stack) {
-      CrashReportingService.instance.recordError(
-        error,
-        stack,
-        reason: 'Uncaught zone error',
-      );
-      if (!completer.isCompleted) completer.completeError(error, stack);
-    },
+      },
+      (error, stack) {
+        CrashReportingService.instance.recordError(
+          error,
+          stack,
+          reason: 'Uncaught zone error',
+        );
+        if (!completer.isCompleted) {
+          completer.completeError(error, stack);
+        }
+      },
+    ),
   );
 
   await completer.future;
