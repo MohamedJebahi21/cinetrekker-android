@@ -6,7 +6,7 @@ import 'app_colors.dart';
 
 class AppTheme {
   static ThemeData light() {
-    final scheme = ColorScheme(
+    const scheme = ColorScheme(
       brightness: Brightness.light,
       primary: AppColors.lightPrimary,
       onPrimary: Colors.white,
@@ -23,7 +23,7 @@ class AppTheme {
   }
 
   static ThemeData dark() {
-    final scheme = ColorScheme(
+    const scheme = ColorScheme(
       brightness: Brightness.dark,
       primary: AppColors.darkPrimary,
       onPrimary: Colors.white,
@@ -40,7 +40,7 @@ class AppTheme {
   }
 
   static ThemeData oled() {
-    final scheme = ColorScheme(
+    const scheme = ColorScheme(
       brightness: Brightness.dark,
       primary: AppColors.oledPrimary,
       onPrimary: Colors.white,

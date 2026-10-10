@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -30,10 +31,12 @@ class EnrichmentApiService {
       if (data == null) return null;
 
       // Cache for 7 days
-      LocalCacheManager.instance.write(
-        cacheKey,
-        data,
-        ttl: const Duration(days: 7),
+      unawaited(
+        LocalCacheManager.instance.write(
+          cacheKey,
+          data,
+          ttl: const Duration(days: 7),
+        ),
       );
 
       return EnrichedRatings.fromJson(data);
@@ -64,10 +67,12 @@ class EnrichmentApiService {
       if (data == null) return null;
 
       // Cache for 6 hours
-      LocalCacheManager.instance.write(
-        cacheKey,
-        data,
-        ttl: const Duration(hours: 6),
+      unawaited(
+        LocalCacheManager.instance.write(
+          cacheKey,
+          data,
+          ttl: const Duration(hours: 6),
+        ),
       );
 
       return TVSchedule.fromJson(data);

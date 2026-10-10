@@ -168,6 +168,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,
+        path: '/movie/:mediaId',
+        redirect: (context, state) =>
+            '/details/movie/${state.pathParameters['mediaId']}',
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/tv/:mediaId',
+        redirect: (context, state) =>
+            '/details/tv/${state.pathParameters['mediaId']}',
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
         path: '/details/:mediaType/:mediaId',
         pageBuilder: (context, state) {
           final mediaType = state.pathParameters['mediaType'] ?? 'movie';

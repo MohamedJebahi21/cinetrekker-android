@@ -14,8 +14,9 @@ import 'core/utils/crash_reporting_service.dart';
 Future<void> main() async {
   final completer = Completer<void>();
 
-  runZonedGuarded(
-    () async {
+  unawaited(
+    runZonedGuarded(
+      () async {
       try {
         WidgetsFlutterBinding.ensureInitialized();
 

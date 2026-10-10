@@ -166,7 +166,7 @@ class _TvTrackingScreenState extends ConsumerState<TvTrackingScreen> {
               ),
             const SizedBox(height: 12),
 
-            _SectionHeader(
+            const _SectionHeader(
               title: 'Continue Watching',
               subtitle: 'Active TV shows you have started watching.',
             ),
@@ -185,7 +185,7 @@ class _TvTrackingScreenState extends ConsumerState<TvTrackingScreen> {
               ),
             const SizedBox(height: 24),
 
-            _SectionHeader(
+            const _SectionHeader(
               title: 'Followed Shows',
               subtitle: 'TV titles tracked in your library queue.',
             ),
@@ -207,7 +207,7 @@ class _TvTrackingScreenState extends ConsumerState<TvTrackingScreen> {
               ),
             const SizedBox(height: 24),
 
-            _SectionHeader(
+            const _SectionHeader(
               title: 'Recent Episode History',
               subtitle: 'Latest logged TV episodes.',
             ),

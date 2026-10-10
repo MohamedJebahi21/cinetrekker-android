@@ -143,31 +143,31 @@ class DetailsHeaderSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return const Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const AppSkeletonBox(
+        AppSkeletonBox(
           width: 120,
           height: 180,
           borderRadius: BorderRadius.all(Radius.circular(18)),
         ),
-        const SizedBox(width: 16),
+        SizedBox(width: 16),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const AppSkeletonBox(
+              AppSkeletonBox(
                 height: 28,
                 borderRadius: BorderRadius.all(Radius.circular(6)),
               ),
-              const SizedBox(height: 8),
-              const AppSkeletonBox(
+              SizedBox(height: 8),
+              AppSkeletonBox(
                 width: 180,
                 height: 16,
                 borderRadius: BorderRadius.all(Radius.circular(4)),
               ),
-              const SizedBox(height: 8),
-              const AppSkeletonBox(
+              SizedBox(height: 8),
+              AppSkeletonBox(
                 width: 120,
                 height: 16,
                 borderRadius: BorderRadius.all(Radius.circular(4)),

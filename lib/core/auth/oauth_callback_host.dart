@@ -56,9 +56,13 @@ class _OAuthCallbackHostState extends ConsumerState<OAuthCallbackHost> {
   }
 
   Future<void> _handleUri(Uri uri) async {
-    if (uri.scheme != 'cinetrekker') return;
+    final isCustomScheme = uri.scheme == 'cinetrekker';
+    final isHttpsScheme = (uri.scheme == 'https' || uri.scheme == 'http') &&
+        (uri.host == 'cinetrekker.vercel.app' || uri.host == 'cinetrekker.com');
 
-    if (uri.host == 'auth') {
+    if (!isCustomScheme && !isHttpsScheme) return;
+
+    if (isCustomScheme && uri.host == 'auth') {
       if (uri.path == '/callback') {
         try {
           await ref
@@ -79,7 +83,15 @@ class _OAuthCallbackHostState extends ConsumerState<OAuthCallbackHost> {
       return;
     }
 
-    final targetPath = '/${uri.host}${uri.path}'.replaceAll('//', '/');
+    String targetPath;
+    if (isHttpsScheme) {
+      targetPath = uri.path;
+    } else {
+      targetPath = '/${uri.host}${uri.path}'.replaceAll('//', '/');
+    }
+    if (uri.hasQuery) {
+      targetPath = '$targetPath?${uri.query}';
+    }
     try {
       ref.read(appRouterProvider).go(targetPath);
     } catch (error, stackTrace) {

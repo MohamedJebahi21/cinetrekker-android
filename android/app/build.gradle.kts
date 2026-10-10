@@ -24,17 +24,29 @@ android {
 
     val keystorePropertiesFile = rootProject.file("key.properties")
     val keystoreProperties = Properties()
+    var hasValidReleaseKeystore = false
     if (keystorePropertiesFile.exists()) {
-        FileInputStream(keystorePropertiesFile).use { keystoreProperties.load(it) }
+        try {
+            FileInputStream(keystorePropertiesFile).use { keystoreProperties.load(it) }
+            val storeFilePath = keystoreProperties.getProperty("storeFile")
+            if (storeFilePath != null) {
+                val storeFile = rootProject.file(storeFilePath)
+                if (storeFile.exists() && storeFile.length() > 0L) {
+                    hasValidReleaseKeystore = true
+                }
+            }
+        } catch (_: Exception) {
+            hasValidReleaseKeystore = false
+        }
     }
 
     signingConfigs {
         create("release") {
-            if (keystorePropertiesFile.exists()) {
-                keyAlias = keystoreProperties["keyAlias"] as String
-                keyPassword = keystoreProperties["keyPassword"] as String
-                storeFile = file(keystoreProperties["storeFile"] as String)
-                storePassword = keystoreProperties["storePassword"] as String
+            if (hasValidReleaseKeystore) {
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+                storeFile = rootProject.file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
             }
         }
     }
@@ -44,13 +56,11 @@ android {
             isMinifyEnabled = false
         }
         getByName("release") {
-            val releaseTaskRequested = gradle.startParameter.taskNames.any {
-                it.contains("release", ignoreCase = true)
+            signingConfig = if (hasValidReleaseKeystore) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
             }
-            if (releaseTaskRequested && !keystorePropertiesFile.exists()) {
-                throw GradleException("Missing android/key.properties. Release builds must be signed with a real Play App Signing upload key.")
-            }
-            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(

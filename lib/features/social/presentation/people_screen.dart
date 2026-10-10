@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -199,7 +200,7 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
                                 ? null
                                 : () async {
                                     if (session == null) {
-                                      context.push('/auth');
+                                      unawaited(context.push('/auth'));
                                       return;
                                     }
                                     if (isFollowing) {

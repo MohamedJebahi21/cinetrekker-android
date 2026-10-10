@@ -5,7 +5,7 @@ import '../constants/app_constants.dart';
 
 enum CineTrekkerThemeStyle { system, light, dark, oled }
 
-final _storage = FlutterSecureStorage();
+const _storage = FlutterSecureStorage();
 
 final themeControllerProvider =
     NotifierProvider<ThemeController, CineTrekkerThemeStyle>(

@@ -57,9 +57,9 @@ class _HomeShellState extends ConsumerState<HomeShell> {
             ),
           ),
           for (var i = 0; i < 4; i++)
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              sliver: const SliverToBoxAdapter(child: PosterRailSkeleton()),
+            const SliverPadding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
+              sliver: SliverToBoxAdapter(child: PosterRailSkeleton()),
             ),
           const SliverPadding(padding: EdgeInsets.only(bottom: 24)),
         ],

@@ -2808,6 +2808,7 @@ class _StoryCardDialogState extends State<_StoryCardDialog> {
               'Check out "${widget.details.displayTitle}" on CineTrekker! $url',
         ),
       );
+      if (!mounted) return;
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(

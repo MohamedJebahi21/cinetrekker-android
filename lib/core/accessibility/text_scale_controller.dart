@@ -5,7 +5,7 @@ import '../constants/app_constants.dart';
 
 enum CineTrekkerTextScaleStyle { system, large, xLarge }
 
-final _storage = FlutterSecureStorage();
+const _storage = FlutterSecureStorage();
 
 final textScaleControllerProvider =
     NotifierProvider<TextScaleController, CineTrekkerTextScaleStyle>(

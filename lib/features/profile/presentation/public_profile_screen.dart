@@ -1,3 +1,4 @@
+import 'dart:async';
 import '../../../core/api/supabase_rest_api.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -150,7 +151,7 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
     final session = ref.read(authControllerProvider).valueOrNull;
     final social = ref.read(socialRepositoryProvider);
     if (session == null) {
-      if (mounted) context.push('/auth');
+      if (mounted) unawaited(context.push('/auth'));
       return;
     }
     setState(() => _followBusy = true);

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -46,7 +47,7 @@ class TmdbApiService {
       final result = await future;
       return result;
     } finally {
-      _inFlightRequests.remove(cacheKey);
+      unawaited(_inFlightRequests.remove(cacheKey));
     }
   }
 
@@ -86,10 +87,12 @@ class TmdbApiService {
       }
 
       // Save to cache asynchronously with 24 hour TTL
-      LocalCacheManager.instance.write(
-        cacheKey,
-        data,
-        ttl: const Duration(hours: 24),
+      unawaited(
+        LocalCacheManager.instance.write(
+          cacheKey,
+          data,
+          ttl: const Duration(hours: 24),
+        ),
       );
 
       return data;
