@@ -1,7 +1,6 @@
 import java.io.FileInputStream
+import java.security.KeyStore
 import java.util.Properties
-
-import org.gradle.api.GradleException
 
 plugins {
     id("com.android.application")
@@ -25,14 +24,55 @@ android {
     val keystorePropertiesFile = rootProject.file("key.properties")
     val keystoreProperties = Properties()
     var hasValidReleaseKeystore = false
+    var releaseStoreFile: java.io.File? = null
+
     if (keystorePropertiesFile.exists()) {
         try {
             FileInputStream(keystorePropertiesFile).use { keystoreProperties.load(it) }
             val storeFilePath = keystoreProperties.getProperty("storeFile")
-            if (storeFilePath != null) {
-                val storeFile = rootProject.file(storeFilePath)
-                if (storeFile.exists() && storeFile.length() > 0L) {
-                    hasValidReleaseKeystore = true
+            val storePassword = keystoreProperties.getProperty("storePassword")
+            val keyAlias = keystoreProperties.getProperty("keyAlias")
+            val keyPassword = keystoreProperties.getProperty("keyPassword")
+
+            if (!storeFilePath.isNullOrBlank() &&
+                !storePassword.isNullOrBlank() &&
+                !keyAlias.isNullOrBlank() &&
+                !keyPassword.isNullOrBlank()
+            ) {
+                val candidateFile = if (rootProject.file(storeFilePath).exists()) {
+                    rootProject.file(storeFilePath)
+                } else {
+                    project.file(storeFilePath)
+                }
+
+                if (candidateFile.exists() && candidateFile.length() > 0L) {
+                    var loaded = false
+                    try {
+                        val ks = KeyStore.getInstance(KeyStore.getDefaultType())
+                        FileInputStream(candidateFile).use { fis ->
+                            ks.load(fis, storePassword.toCharArray())
+                        }
+                        if (ks.containsAlias(keyAlias)) {
+                            loaded = true
+                        }
+                    } catch (_: Exception) {
+                        try {
+                            val ks = KeyStore.getInstance("JKS")
+                            FileInputStream(candidateFile).use { fis ->
+                                ks.load(fis, storePassword.toCharArray())
+                            }
+                            if (ks.containsAlias(keyAlias)) {
+                                loaded = true
+                            }
+                        } catch (_: Exception) {
+                            loaded = false
+                        }
+                    }
+
+                    if (loaded) {
+                        hasValidReleaseKeystore = true
+                        releaseStoreFile = candidateFile
+                    }
                 }
             }
         } catch (_: Exception) {
@@ -42,10 +82,10 @@ android {
 
     signingConfigs {
         create("release") {
-            if (hasValidReleaseKeystore) {
+            if (hasValidReleaseKeystore && releaseStoreFile != null) {
                 keyAlias = keystoreProperties.getProperty("keyAlias")
                 keyPassword = keystoreProperties.getProperty("keyPassword")
-                storeFile = rootProject.file(keystoreProperties.getProperty("storeFile"))
+                storeFile = releaseStoreFile
                 storePassword = keystoreProperties.getProperty("storePassword")
             }
         }
