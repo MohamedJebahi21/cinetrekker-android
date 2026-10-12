@@ -5,6 +5,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 
 class AppTheme {
+  /// When false (e.g. in tests), disables runtime GoogleFonts resolution.
+  @visibleForTesting
+  static bool useGoogleFonts = true;
+
   static ThemeData light() {
     const scheme = ColorScheme(
       brightness: Brightness.light,
@@ -66,67 +70,73 @@ class AppTheme {
         ? Typography.material2021().white
         : Typography.material2021().black;
 
-    final dmSans = GoogleFonts.dmSansTextTheme(
-      baseTextTheme,
-    ).apply(bodyColor: scheme.onSurface, displayColor: scheme.onSurface);
+    final textTheme = useGoogleFonts
+        ? () {
+            final dmSans = GoogleFonts.dmSansTextTheme(
+              baseTextTheme,
+            ).apply(bodyColor: scheme.onSurface, displayColor: scheme.onSurface);
 
-    // Space Grotesk for Display/Titles
-    final textTheme = dmSans.copyWith(
-      displayLarge: GoogleFonts.spaceGrotesk(
-        textStyle: dmSans.displayLarge?.copyWith(
-          fontWeight: FontWeight.w700,
-          letterSpacing: -0.5,
-        ),
-      ),
-      displayMedium: GoogleFonts.spaceGrotesk(
-        textStyle: dmSans.displayMedium?.copyWith(
-          fontWeight: FontWeight.w700,
-          letterSpacing: -0.5,
-        ),
-      ),
-      displaySmall: GoogleFonts.spaceGrotesk(
-        textStyle: dmSans.displaySmall?.copyWith(
-          fontWeight: FontWeight.w700,
-          letterSpacing: -0.5,
-        ),
-      ),
-      headlineLarge: GoogleFonts.spaceGrotesk(
-        textStyle: dmSans.headlineLarge?.copyWith(
-          fontWeight: FontWeight.w700,
-          letterSpacing: -0.3,
-        ),
-      ),
-      headlineMedium: GoogleFonts.spaceGrotesk(
-        textStyle: dmSans.headlineMedium?.copyWith(
-          fontWeight: FontWeight.w700,
-          letterSpacing: -0.3,
-        ),
-      ),
-      headlineSmall: GoogleFonts.spaceGrotesk(
-        textStyle: dmSans.headlineSmall?.copyWith(
-          fontWeight: FontWeight.w700,
-          letterSpacing: -0.3,
-        ),
-      ),
-      titleLarge: GoogleFonts.spaceGrotesk(
-        textStyle: dmSans.titleLarge?.copyWith(
-          fontWeight: FontWeight.w600,
-          letterSpacing: -0.2,
-        ),
-      ),
-      titleMedium: GoogleFonts.spaceGrotesk(
-        textStyle: dmSans.titleMedium?.copyWith(
-          fontWeight: FontWeight.w600,
-          letterSpacing: -0.2,
-        ),
-      ),
-      titleSmall: GoogleFonts.spaceGrotesk(
-        textStyle: dmSans.titleSmall?.copyWith(
-          fontWeight: FontWeight.w600,
-          letterSpacing: -0.1,
-        ),
-      ),
-    );
+            return dmSans.copyWith(
+              displayLarge: GoogleFonts.spaceGrotesk(
+                textStyle: dmSans.displayLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              displayMedium: GoogleFonts.spaceGrotesk(
+                textStyle: dmSans.displayMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              displaySmall: GoogleFonts.spaceGrotesk(
+                textStyle: dmSans.displaySmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              headlineLarge: GoogleFonts.spaceGrotesk(
+                textStyle: dmSans.headlineLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.3,
+                ),
+              ),
+              headlineMedium: GoogleFonts.spaceGrotesk(
+                textStyle: dmSans.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.3,
+                ),
+              ),
+              headlineSmall: GoogleFonts.spaceGrotesk(
+                textStyle: dmSans.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.3,
+                ),
+              ),
+              titleLarge: GoogleFonts.spaceGrotesk(
+                textStyle: dmSans.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.2,
+                ),
+              ),
+              titleMedium: GoogleFonts.spaceGrotesk(
+                textStyle: dmSans.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.2,
+                ),
+              ),
+              titleSmall: GoogleFonts.spaceGrotesk(
+                textStyle: dmSans.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.1,
+                ),
+              ),
+            );
+          }()
+        : baseTextTheme.apply(
+            bodyColor: scheme.onSurface,
+            displayColor: scheme.onSurface,
+          );
 
     return ThemeData(
       useMaterial3: true,
@@ -193,11 +203,17 @@ class AppTheme {
         backgroundColor: scheme.surface,
         indicatorColor: scheme.primary.withValues(alpha: 0.15),
         labelTextStyle: WidgetStatePropertyAll(
-          GoogleFonts.dmSans(
-            fontWeight: FontWeight.w600,
-            fontSize: 12,
-            color: scheme.onSurface,
-          ),
+          useGoogleFonts
+              ? GoogleFonts.dmSans(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                  color: scheme.onSurface,
+                )
+              : TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                  color: scheme.onSurface,
+                ),
         ),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
