@@ -160,7 +160,15 @@ class TvTrackingController extends Notifier<TvTrackingState> {
           .toList(growable: false);
 
       final recentEpisodes = [...watchedEpisodes]
-        ..sort((a, b) => (b.watchedAt ?? '').compareTo(a.watchedAt ?? ''));
+        ..sort((a, b) {
+          final aStamp =
+              DateTime.tryParse(a.watchedAt ?? '') ??
+              DateTime.fromMillisecondsSinceEpoch(0);
+          final bStamp =
+              DateTime.tryParse(b.watchedAt ?? '') ??
+              DateTime.fromMillisecondsSinceEpoch(0);
+          return bStamp.compareTo(aStamp);
+        });
 
       state = TvTrackingState(
         continueWatching: continueWatching,
@@ -180,6 +188,7 @@ class TvTrackingController extends Notifier<TvTrackingState> {
     required String showName,
     String? posterPath,
   }) async {
+    final previousFollowed = state.followedShows;
     final optimistic = FollowedShowItem(
       showId: showId,
       showName: showName,
@@ -194,21 +203,32 @@ class TvTrackingController extends Notifier<TvTrackingState> {
       ],
     );
 
-    await ref
-        .read(userLibraryRepositoryProvider)
-        .followShow(showId: showId, showName: showName, posterPath: posterPath);
-    await load(silent: true);
+    try {
+      await ref
+          .read(userLibraryRepositoryProvider)
+          .followShow(showId: showId, showName: showName, posterPath: posterPath);
+      await load(silent: true);
+    } catch (_) {
+      state = state.copyWith(followedShows: previousFollowed);
+      rethrow;
+    }
   }
 
   Future<void> unfollowShow({required int showId}) async {
+    final previousFollowed = state.followedShows;
     state = state.copyWith(
       followedShows: state.followedShows
           .where((s) => s.showId != showId)
           .toList(),
     );
 
-    await ref.read(userLibraryRepositoryProvider).unfollowShow(showId: showId);
-    await load(silent: true);
+    try {
+      await ref.read(userLibraryRepositoryProvider).unfollowShow(showId: showId);
+      await load(silent: true);
+    } catch (_) {
+      state = state.copyWith(followedShows: previousFollowed);
+      rethrow;
+    }
   }
 
   Future<void> markEpisodeWatched({
@@ -220,6 +240,18 @@ class TvTrackingController extends Notifier<TvTrackingState> {
     String? showName,
     String? posterPath,
   }) async {
+    // If show is not yet in followed list, automatically follow it so it shows in TV tracker
+    if (!state.isFollowed(showId) && showName != null && showName.isNotEmpty) {
+      try {
+        await followShow(
+          showId: showId,
+          showName: showName,
+          posterPath: posterPath,
+        );
+      } catch (_) {}
+    }
+
+    final previousEpisodes = state.watchedEpisodes;
     final optimistic = WatchedEpisodeItem(
       showId: showId,
       seasonNumber: seasonNumber,
@@ -241,18 +273,23 @@ class TvTrackingController extends Notifier<TvTrackingState> {
       ],
     );
 
-    await ref
-        .read(userLibraryRepositoryProvider)
-        .markEpisodeWatched(
-          showId: showId,
-          seasonNumber: seasonNumber,
-          episodeNumber: episodeNumber,
-          episodeName: episodeName,
-          airDate: airDate,
-          showName: showName,
-          posterPath: posterPath,
-        );
-    await load(silent: true);
+    try {
+      await ref
+          .read(userLibraryRepositoryProvider)
+          .markEpisodeWatched(
+            showId: showId,
+            seasonNumber: seasonNumber,
+            episodeNumber: episodeNumber,
+            episodeName: episodeName,
+            airDate: airDate,
+            showName: showName,
+            posterPath: posterPath,
+          );
+      await load(silent: true);
+    } catch (_) {
+      state = state.copyWith(watchedEpisodes: previousEpisodes);
+      rethrow;
+    }
   }
 
   Future<void> markSeasonWatched({
@@ -262,6 +299,17 @@ class TvTrackingController extends Notifier<TvTrackingState> {
     String? showName,
     String? posterPath,
   }) async {
+    if (!state.isFollowed(showId) && showName != null && showName.isNotEmpty) {
+      try {
+        await followShow(
+          showId: showId,
+          showName: showName,
+          posterPath: posterPath,
+        );
+      } catch (_) {}
+    }
+
+    final previousEpisodes = state.watchedEpisodes;
     final now = DateTime.now().toIso8601String();
     final newItems = episodes
         .map(
@@ -285,20 +333,56 @@ class TvTrackingController extends Notifier<TvTrackingState> {
       ],
     );
 
-    for (final ep in episodes) {
-      await ref
-          .read(userLibraryRepositoryProvider)
-          .markEpisodeWatched(
-            showId: showId,
-            seasonNumber: seasonNumber,
-            episodeNumber: ep.episodeNumber,
-            episodeName: ep.name,
-            airDate: ep.airDate,
-            showName: showName,
-            posterPath: posterPath,
-          );
+    try {
+      for (final ep in episodes) {
+        await ref
+            .read(userLibraryRepositoryProvider)
+            .markEpisodeWatched(
+              showId: showId,
+              seasonNumber: seasonNumber,
+              episodeNumber: ep.episodeNumber,
+              episodeName: ep.name,
+              airDate: ep.airDate,
+              showName: showName,
+              posterPath: posterPath,
+            );
+      }
+      await load(silent: true);
+    } catch (_) {
+      state = state.copyWith(watchedEpisodes: previousEpisodes);
+      rethrow;
     }
-    await load(silent: true);
+  }
+
+  Future<void> unmarkSeasonWatched({
+    required int showId,
+    required int seasonNumber,
+    required List<TmdbEpisode> episodes,
+  }) async {
+    final previousEpisodes = state.watchedEpisodes;
+    state = state.copyWith(
+      watchedEpisodes: state.watchedEpisodes
+          .where(
+            (ep) => !(ep.showId == showId && ep.seasonNumber == seasonNumber),
+          )
+          .toList(),
+    );
+
+    try {
+      for (final ep in episodes) {
+        await ref
+            .read(userLibraryRepositoryProvider)
+            .removeEpisodeWatched(
+              showId: showId,
+              seasonNumber: seasonNumber,
+              episodeNumber: ep.episodeNumber,
+            );
+      }
+      await load(silent: true);
+    } catch (_) {
+      state = state.copyWith(watchedEpisodes: previousEpisodes);
+      rethrow;
+    }
   }
 
   Future<void> removeEpisodeWatched({
@@ -306,6 +390,7 @@ class TvTrackingController extends Notifier<TvTrackingState> {
     required int seasonNumber,
     required int episodeNumber,
   }) async {
+    final previousEpisodes = state.watchedEpisodes;
     state = state.copyWith(
       watchedEpisodes: state.watchedEpisodes
           .where(
@@ -317,14 +402,19 @@ class TvTrackingController extends Notifier<TvTrackingState> {
           .toList(),
     );
 
-    await ref
-        .read(userLibraryRepositoryProvider)
-        .removeEpisodeWatched(
-          showId: showId,
-          seasonNumber: seasonNumber,
-          episodeNumber: episodeNumber,
-        );
-    await load(silent: true);
+    try {
+      await ref
+          .read(userLibraryRepositoryProvider)
+          .removeEpisodeWatched(
+            showId: showId,
+            seasonNumber: seasonNumber,
+            episodeNumber: episodeNumber,
+          );
+      await load(silent: true);
+    } catch (_) {
+      state = state.copyWith(watchedEpisodes: previousEpisodes);
+      rethrow;
+    }
   }
 
   Future<void> unmarkEpisodeWatched({

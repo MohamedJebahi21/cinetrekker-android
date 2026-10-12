@@ -149,6 +149,7 @@ class WatchlistController extends Notifier<WatchlistState> {
     double? voteAverage,
     String? releaseDate,
   }) async {
+    final previousWatchlist = state.watchlist;
     final optimistic = UserMediaItem(
       id: '$mediaType-$mediaId',
       mediaId: mediaId,
@@ -171,34 +172,45 @@ class WatchlistController extends Notifier<WatchlistState> {
       ],
     );
 
-    await ref
-        .read(userLibraryRepositoryProvider)
-        .addToWatchlist(
-          mediaId: mediaId,
-          mediaType: mediaType,
-          title: title,
-          posterPath: posterPath,
-          backdropPath: backdropPath,
-          voteAverage: voteAverage,
-          releaseDate: releaseDate,
-        );
-    await load(silent: true);
+    try {
+      await ref
+          .read(userLibraryRepositoryProvider)
+          .addToWatchlist(
+            mediaId: mediaId,
+            mediaType: mediaType,
+            title: title,
+            posterPath: posterPath,
+            backdropPath: backdropPath,
+            voteAverage: voteAverage,
+            releaseDate: releaseDate,
+          );
+      await load(silent: true);
+    } catch (_) {
+      state = state.copyWith(watchlist: previousWatchlist);
+      rethrow;
+    }
   }
 
   Future<void> removeFromWatchlist({
     required int mediaId,
     required String mediaType,
   }) async {
+    final previousWatchlist = state.watchlist;
     state = state.copyWith(
       watchlist: state.watchlist
           .where((i) => !(i.mediaId == mediaId && i.mediaType == mediaType))
           .toList(),
     );
 
-    await ref
-        .read(userLibraryRepositoryProvider)
-        .removeFromWatchlist(mediaId: mediaId, mediaType: mediaType);
-    await load(silent: true);
+    try {
+      await ref
+          .read(userLibraryRepositoryProvider)
+          .removeFromWatchlist(mediaId: mediaId, mediaType: mediaType);
+      await load(silent: true);
+    } catch (_) {
+      state = state.copyWith(watchlist: previousWatchlist);
+      rethrow;
+    }
   }
 
   Future<void> markWatched({
@@ -213,6 +225,7 @@ class WatchlistController extends Notifier<WatchlistState> {
     double? voteAverage,
     String? releaseDate,
   }) async {
+    final previousWatched = state.watched;
     final optimistic = UserMediaItem(
       id: '$mediaType-$mediaId',
       mediaId: mediaId,
@@ -239,36 +252,47 @@ class WatchlistController extends Notifier<WatchlistState> {
       ],
     );
 
-    await ref
-        .read(userLibraryRepositoryProvider)
-        .addToWatched(
-          mediaId: mediaId,
-          mediaType: mediaType,
-          rating: rating,
-          note: note,
-          status: status,
-          title: title,
-          posterPath: posterPath,
-          backdropPath: backdropPath,
-          voteAverage: voteAverage,
-          releaseDate: releaseDate,
-        );
-    await load(silent: true);
+    try {
+      await ref
+          .read(userLibraryRepositoryProvider)
+          .addToWatched(
+            mediaId: mediaId,
+            mediaType: mediaType,
+            rating: rating,
+            note: note,
+            status: status,
+            title: title,
+            posterPath: posterPath,
+            backdropPath: backdropPath,
+            voteAverage: voteAverage,
+            releaseDate: releaseDate,
+          );
+      await load(silent: true);
+    } catch (_) {
+      state = state.copyWith(watched: previousWatched);
+      rethrow;
+    }
   }
 
   Future<void> removeFromWatched({
     required int mediaId,
     required String mediaType,
   }) async {
+    final previousWatched = state.watched;
     state = state.copyWith(
       watched: state.watched
           .where((i) => !(i.mediaId == mediaId && i.mediaType == mediaType))
           .toList(),
     );
 
-    await ref
-        .read(userLibraryRepositoryProvider)
-        .removeFromWatched(mediaId: mediaId, mediaType: mediaType);
-    await load(silent: true);
+    try {
+      await ref
+          .read(userLibraryRepositoryProvider)
+          .removeFromWatched(mediaId: mediaId, mediaType: mediaType);
+      await load(silent: true);
+    } catch (_) {
+      state = state.copyWith(watched: previousWatched);
+      rethrow;
+    }
   }
 }

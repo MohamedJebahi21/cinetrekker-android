@@ -1132,50 +1132,58 @@ class _ActionBar extends ConsumerWidget {
       ),
       child: Row(
         children: [
-          // Watchlist Button
           Expanded(
             child: FilledButton.icon(
-              onPressed: () {
+              onPressed: () async {
                 final messenger = ScaffoldMessenger.of(context);
                 messenger.hideCurrentSnackBar();
-                if (isWatchlist) {
-                  Haptics.removeFromWatchlist();
-                  AppSemantics.announceWatchlistRemove(details.displayTitle);
-                  messenger.showSnackBar(
-                    SnackBar(
-                      content: Text('Removed "${details.displayTitle}" from Watchlist'),
-                      duration: const Duration(seconds: 2),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                  ref
-                      .read(watchlistControllerProvider.notifier)
-                      .removeFromWatchlist(
-                        mediaId: mediaId,
-                        mediaType: mediaType,
-                      );
-                } else {
-                  Haptics.addToWatchlist();
-                  AppSemantics.announceWatchlistAdd(details.displayTitle);
-                  messenger.showSnackBar(
-                    SnackBar(
-                      content: Text('Added "${details.displayTitle}" to Watchlist'),
-                      duration: const Duration(seconds: 2),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                  ref
-                      .read(watchlistControllerProvider.notifier)
-                      .addToWatchlist(
-                        mediaId: mediaId,
-                        mediaType: mediaType,
-                        title: details.displayTitle,
-                        posterPath: details.posterPath,
-                        backdropPath: details.backdropPath,
-                        voteAverage: details.voteAverage,
-                        releaseDate:
-                            details.releaseDate ?? details.firstAirDate,
-                      );
+                final isRemoving = isWatchlist;
+                try {
+                  if (isRemoving) {
+                    await ref
+                        .read(watchlistControllerProvider.notifier)
+                        .removeFromWatchlist(
+                          mediaId: mediaId,
+                          mediaType: mediaType,
+                        );
+                    Haptics.removeFromWatchlist();
+                    AppSemantics.announceWatchlistRemove(details.displayTitle);
+                  } else {
+                    await ref
+                        .read(watchlistControllerProvider.notifier)
+                        .addToWatchlist(
+                          mediaId: mediaId,
+                          mediaType: mediaType,
+                          title: details.displayTitle,
+                          posterPath: details.posterPath,
+                          backdropPath: details.backdropPath,
+                          voteAverage: details.voteAverage,
+                          releaseDate: details.releaseDate ?? details.firstAirDate,
+                        );
+                    Haptics.addToWatchlist();
+                    AppSemantics.announceWatchlistAdd(details.displayTitle);
+                  }
+                  if (context.mounted) {
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text(isRemoving
+                            ? 'Removed "${details.displayTitle}" from Watchlist'
+                            : 'Added "${details.displayTitle}" to Watchlist'),
+                        duration: const Duration(seconds: 2),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                } catch (error) {
+                  if (context.mounted) {
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text('Could not update Watchlist: $error'),
+                        duration: const Duration(seconds: 3),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
                 }
               },
               style: FilledButton.styleFrom(
@@ -1212,8 +1220,6 @@ class _ActionBar extends ConsumerWidget {
             ),
           ),
           const SizedBox(width: 8),
-
-          // Watched Status Button (with Dialog)
           Expanded(
             child: Semantics(
               button: true,
@@ -1221,9 +1227,7 @@ class _ActionBar extends ConsumerWidget {
                   ? 'Watched. Double tap to edit score or log date.'
                   : 'Mark as watched',
               child: FilledButton.icon(
-                onPressed: () {
-                  _showWatchedDialog(context, ref);
-                },
+                onPressed: () => _showWatchedDialog(context, ref),
                 style: FilledButton.styleFrom(
                   backgroundColor: isWatched
                       ? const Color(0xFF4CAF50).withValues(alpha: 0.15)
@@ -1259,47 +1263,50 @@ class _ActionBar extends ConsumerWidget {
             ),
           ),
           const SizedBox(width: 8),
-
-          // Favorite Heart Button with spring bounce
           Semantics(
             button: true,
             label: isFavorite
                 ? 'Favorite title. Double tap to remove from Favorites.'
                 : 'Add to Favorites',
             child: BouncyPressable(
-              onTap: () {
+              onTap: () async {
                 final messenger = ScaffoldMessenger.of(context);
                 messenger.hideCurrentSnackBar();
-                if (isFavorite) {
-                  Haptics.unfavorite();
+                try {
+                  await ref
+                      .read(profileControllerProvider.notifier)
+                      .toggleFavoriteTitle(mediaType: mediaType, mediaId: mediaId);
+                  if (isFavorite) {
+                    Haptics.unfavorite();
+                  } else {
+                    Haptics.favorite();
+                  }
                   AppSemantics.announceFavorite(
                     title: details.displayTitle,
-                    isFavorite: false,
+                    isFavorite: !isFavorite,
                   );
-                  messenger.showSnackBar(
-                    SnackBar(
-                      content: Text('Removed "${details.displayTitle}" from Favorites'),
-                      duration: const Duration(seconds: 2),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                } else {
-                  Haptics.favorite();
-                  AppSemantics.announceFavorite(
-                    title: details.displayTitle,
-                    isFavorite: true,
-                  );
-                  messenger.showSnackBar(
-                    SnackBar(
-                      content: Text('Saved "${details.displayTitle}" to Favorites ❤️'),
-                      duration: const Duration(seconds: 2),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
+                  if (context.mounted) {
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text(isFavorite
+                            ? 'Removed "${details.displayTitle}" from Favorites'
+                            : 'Saved "${details.displayTitle}" to Favorites'),
+                        duration: const Duration(seconds: 2),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                } catch (error) {
+                  if (context.mounted) {
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text('Could not update Favorites: $error'),
+                        duration: const Duration(seconds: 3),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
                 }
-                ref
-                    .read(profileControllerProvider.notifier)
-                    .toggleFavoriteTitle(mediaType: mediaType, mediaId: mediaId);
               },
               child: Container(
                 padding: const EdgeInsets.all(8),
@@ -1332,7 +1339,11 @@ class _ActionBar extends ConsumerWidget {
   }
 
   void _showWatchedDialog(BuildContext context, WidgetRef ref) {
-    double rating = 8.0;
+    double rating = 0.0;
+    bool saving = false;
+    final currentlyWatched = ref
+        .read(watchlistControllerProvider)
+        .isWatched(mediaId, mediaType);
     showDialog(
       context: context,
       builder: (dialogCtx) {
@@ -1343,7 +1354,7 @@ class _ActionBar extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(18),
               ),
               title: Text(
-                'Mark as Watched',
+                currentlyWatched ? 'Update Viewing Record' : 'Mark as Watched',
                 style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w700),
               ),
               content: Column(
@@ -1355,7 +1366,9 @@ class _ActionBar extends ConsumerWidget {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Your Rating: ${rating.toStringAsFixed(1)} / 10',
+                    rating == 0
+                        ? 'Add a personal rating (optional)'
+                        : 'Your Rating: ${rating.toStringAsFixed(1)} / 10',
                     style: GoogleFonts.spaceGrotesk(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
@@ -1363,62 +1376,86 @@ class _ActionBar extends ConsumerWidget {
                   ),
                   Slider(
                     value: rating,
-                    min: 1.0,
+                    min: 0.0,
                     max: 10.0,
-                    divisions: 18,
-                    label: rating.toStringAsFixed(1),
-                    onChanged: (val) {
-                      if (val != rating) {
-                        Haptics.selection();
-                      }
+                    divisions: 20,
+                    label: rating == 0 ? 'No rating' : rating.toStringAsFixed(1),
+                    onChanged: saving ? null : (val) {
+                      if (val != rating) Haptics.selection();
                       setDialogState(() => rating = val);
                     },
                   ),
                 ],
               ),
               actions: [
+                if (currentlyWatched)
+                  TextButton(
+                    onPressed: saving ? null : () async {
+                      setDialogState(() => saving = true);
+                      try {
+                        await ref
+                            .read(watchlistControllerProvider.notifier)
+                            .removeFromWatched(mediaId: mediaId, mediaType: mediaType);
+                        if (dialogCtx.mounted) Navigator.of(dialogCtx).pop();
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Removed from watched history')),
+                          );
+                        }
+                      } catch (error) {
+                        setDialogState(() => saving = false);
+                        if (dialogCtx.mounted) {
+                          ScaffoldMessenger.of(dialogCtx).showSnackBar(
+                            SnackBar(content: Text('Could not update history: $error')),
+                          );
+                        }
+                      }
+                    },
+                    child: const Text('Remove'),
+                  ),
                 TextButton(
-                  onPressed: () => Navigator.of(dialogCtx).pop(),
+                  onPressed: saving ? null : () => Navigator.of(dialogCtx).pop(),
                   child: const Text('Cancel'),
                 ),
                 FilledButton(
-                  onPressed: () async {
-                    Haptics.markWatched();
-                    AppSemantics.announceRating(
-                      title: details.displayTitle,
-                      rating: rating,
-                    );
-                    await ref
-                        .read(watchlistControllerProvider.notifier)
-                        .markWatched(
-                          mediaId: mediaId,
-                          mediaType: mediaType,
-                          rating: rating,
-                          title: details.displayTitle,
-                          posterPath: details.posterPath,
-                          backdropPath: details.backdropPath,
-                          voteAverage: details.voteAverage,
-                          releaseDate:
-                              details.releaseDate ?? details.firstAirDate,
-                        );
-                    if (dialogCtx.mounted) {
-                      Navigator.of(dialogCtx).pop();
-                    }
-                    if (context.mounted) {
-                      final messenger = ScaffoldMessenger.of(context);
-                      messenger.hideCurrentSnackBar();
-                      messenger.showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            'Marked "${details.displayTitle}" as watched (${rating.toStringAsFixed(1)} ★)',
+                  onPressed: saving ? null : () async {
+                    setDialogState(() => saving = true);
+                    try {
+                      await ref
+                          .read(watchlistControllerProvider.notifier)
+                          .markWatched(
+                            mediaId: mediaId,
+                            mediaType: mediaType,
+                            rating: rating > 0 ? rating : null,
+                            title: details.displayTitle,
+                            posterPath: details.posterPath,
+                            backdropPath: details.backdropPath,
+                            voteAverage: details.voteAverage,
+                            releaseDate: details.releaseDate ?? details.firstAirDate,
+                          );
+                      Haptics.markWatched();
+                      if (dialogCtx.mounted) Navigator.of(dialogCtx).pop();
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Marked "${details.displayTitle}" as watched${rating > 0 ? ' (${rating.toStringAsFixed(1)} ★)' : ''}'),
+                            duration: const Duration(seconds: 2),
+                            behavior: SnackBarBehavior.floating,
                           ),
-                          duration: const Duration(seconds: 2),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
+                        );
+                      }
+                    } catch (error) {
+                      setDialogState(() => saving = false);
+                      if (dialogCtx.mounted) {
+                        ScaffoldMessenger.of(dialogCtx).showSnackBar(
+                          SnackBar(content: Text('Could not save viewing record: $error')),
+                        );
+                      }
                     }
                   },
-                  child: const Text('Save'),
+                  child: saving
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Text('Save'),
                 ),
               ],
             );
