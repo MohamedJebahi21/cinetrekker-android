@@ -1,9 +1,11 @@
 import 'package:cinetrekker_android/core/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  GoogleFonts.config.allowRuntimeFetching = false;
 
   group('AppTheme', () {
     test('light theme has correct brightness and Material 3 enabled', () {
