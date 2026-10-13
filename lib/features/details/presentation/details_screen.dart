@@ -1819,36 +1819,77 @@ class _TvSeasonAccordionState extends ConsumerState<_TvSeasonAccordion> {
               ),
               if (_seasonData != null && _seasonData!.episodes.isNotEmpty) ...[
                 const SizedBox(width: 8),
-                TextButton.icon(
-                  onPressed: () async {
-                    Haptics.markWatched();
-                    await controller.markSeasonWatched(
-                      showId: widget.tvId,
-                      seasonNumber: _selectedSeasonNumber,
-                      episodes: _seasonData!.episodes,
-                      showName: widget.details.displayTitle,
-                      posterPath: widget.details.posterPath,
-                    );
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            'Marked Season $_selectedSeasonNumber as watched!',
+                Builder(
+                  builder: (context) {
+                    final seasonEpisodes = _seasonData!.episodes;
+                    final isSeasonFullyWatched = seasonEpisodes.isNotEmpty &&
+                        seasonEpisodes.every(
+                          (ep) => tracking.isEpisodeWatched(
+                            showId: widget.tvId,
+                            seasonNumber: _selectedSeasonNumber,
+                            episodeNumber: ep.episodeNumber,
                           ),
-                          duration: const Duration(seconds: 2),
+                        );
+
+                    return TextButton.icon(
+                      onPressed: () async {
+                        if (isSeasonFullyWatched) {
+                          Haptics.selection();
+                          await controller.unmarkSeasonWatched(
+                            showId: widget.tvId,
+                            seasonNumber: _selectedSeasonNumber,
+                            episodes: seasonEpisodes,
+                          );
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Unmarked Season $_selectedSeasonNumber',
+                                ),
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                          }
+                        } else {
+                          Haptics.markWatched();
+                          await controller.markSeasonWatched(
+                            showId: widget.tvId,
+                            seasonNumber: _selectedSeasonNumber,
+                            episodes: seasonEpisodes,
+                            showName: widget.details.displayTitle,
+                            posterPath: widget.details.posterPath,
+                          );
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Marked Season $_selectedSeasonNumber as watched!',
+                                ),
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                          }
+                        }
+                      },
+                      icon: Icon(
+                        isSeasonFullyWatched
+                            ? Icons.remove_done_rounded
+                            : Icons.done_all_rounded,
+                        size: 16,
+                      ),
+                      label: Text(
+                        isSeasonFullyWatched ? 'Unmark season' : 'All seen',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
                         ),
-                      );
-                    }
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    );
                   },
-                  icon: const Icon(Icons.done_all_rounded, size: 16),
-                  label: const Text('All seen', style: TextStyle(fontSize: 12)),
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    visualDensity: VisualDensity.compact,
-                  ),
                 ),
               ],
             ],

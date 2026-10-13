@@ -15,6 +15,8 @@ import '../../../shared/widgets/bouncy_pressable.dart';
 import '../../../shared/widgets/skeleton_loaders.dart';
 import '../../../shared/widgets/app_cached_image.dart';
 import '../../tv_tracking/presentation/tv_tracking_controller.dart';
+import '../../../core/widgets/offline_banner.dart';
+import '../../watchlist/data/user_library_repository.dart';
 import '../../watchlist/presentation/watchlist_controller.dart';
 import 'home_controller.dart';
 
@@ -33,6 +35,12 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     final state = ref.watch(homeControllerProvider);
     final l10n = ref.watch(appLocalizationsProvider);
     final authState = ref.watch(authControllerProvider);
+
+    ref.listen<AsyncValue<bool>>(connectivityProvider, (previous, next) {
+      if (previous?.valueOrNull == false && next.valueOrNull == true) {
+        unawaited(ref.read(userLibraryRepositoryProvider).flushMutationQueue());
+      }
+    });
     final user = authState.valueOrNull?.user;
     final theme = Theme.of(context);
 
@@ -123,6 +131,19 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                   onItemTap: (item) => context.push('/details/tv/${item.id}'),
                 ),
               ),
+
+              // Recently Watched
+              if (feed.watched.isNotEmpty) ...[
+                SliverToBoxAdapter(
+                  child: _RecentlyWatchedSection(
+                    items: feed.watched,
+                    onItemTap: (item) => context.push(
+                      '/details/${item.mediaType}/${item.mediaId}',
+                    ),
+                    onSeeAllTap: () => context.push('/watchlist?tab=watched'),
+                  ),
+                ),
+              ],
 
               // 3. Trending Section with Day / Week Toggle
               SliverToBoxAdapter(
@@ -1429,6 +1450,144 @@ class _QuestBanner extends StatelessWidget {
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RecentlyWatchedSection extends StatelessWidget {
+  const _RecentlyWatchedSection({
+    required this.items,
+    required this.onItemTap,
+    required this.onSeeAllTap,
+  });
+
+  final List<UserMediaItem> items;
+  final void Function(UserMediaItem item) onItemTap;
+  final VoidCallback onSeeAllTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return _SectionContainer(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _SectionHeaderWithAction(
+            title: 'Recently Watched',
+            actionLabel: 'See all',
+            onAction: onSeeAllTap,
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 190,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              clipBehavior: Clip.none,
+              itemCount: items.length > 15 ? 15 : items.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (context, index) {
+                final item = items[index];
+                final posterUrl = item.posterPath != null
+                    ? 'https://image.tmdb.org/t/p/w342${item.posterPath}'
+                    : null;
+
+                return BouncyPressable(
+                  onTap: () => onItemTap(item),
+                  child: SizedBox(
+                    width: 110,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Stack(
+                            children: [
+                              Container(
+                                width: 110,
+                                height: 148,
+                                color: theme.colorScheme.surfaceContainerHighest,
+                                child: posterUrl != null
+                                    ? AppCachedImage(
+                                        imageUrl: posterUrl,
+                                        fit: BoxFit.cover,
+                                      )
+                                    : const Center(
+                                        child: Icon(Icons.movie_outlined, size: 28),
+                                      ),
+                              ),
+                              Positioned(
+                                top: 6,
+                                right: 6,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.75),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: item.rating != null
+                                      ? Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(
+                                              Icons.star_rounded,
+                                              size: 12,
+                                              color: Colors.amber,
+                                            ),
+                                            const SizedBox(width: 2),
+                                            Text(
+                                              item.rating!.toStringAsFixed(1),
+                                              style: GoogleFonts.dmSans(
+                                                fontSize: 10.5,
+                                                fontWeight: FontWeight.w700,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ],
+                                        )
+                                      : const Icon(
+                                          Icons.check_circle_rounded,
+                                          size: 13,
+                                          color: Color(0xFF4ADE80),
+                                        ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          item.displayTitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                        ),
+                        if (item.year != null)
+                          Text(
+                            item.year!,
+                            style: GoogleFonts.dmSans(
+                              fontSize: 11,
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.55,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                );
+              },
             ),
           ),
         ],

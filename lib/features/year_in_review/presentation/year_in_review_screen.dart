@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -60,6 +61,26 @@ class _YearInReviewScreenState extends ConsumerState<YearInReviewScreen> {
           'Year in Review',
           style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w700),
         ),
+        actions: [
+          if (state.totalWatched > 0 || state.episodesCount > 0)
+            IconButton(
+              icon: const Icon(Icons.share_outlined),
+              tooltip: 'Copy shareable summary',
+              onPressed: () async {
+                await Clipboard.setData(
+                  ClipboardData(text: state.toShareSummary()),
+                );
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Year in Review summary copied to clipboard!'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
+              },
+            ),
+        ],
       ),
       body: RefreshIndicator(
         color: theme.colorScheme.primary,
@@ -215,14 +236,14 @@ class _MetricGrid extends StatelessWidget {
       spacing: 12,
       runSpacing: 12,
       children: [
-        _MetricCard(label: 'Watched', value: '${state.totalWatched}'),
-        _MetricCard(label: 'Watchlist', value: '${state.watchlistCount}'),
-        _MetricCard(label: 'Rated', value: '${state.ratedCount}'),
+        _MetricCard(label: 'Titles logged', value: '${state.totalWatched}'),
+        _MetricCard(label: 'Episodes seen', value: '${state.episodesCount}'),
+        _MetricCard(label: 'Watchlist queue', value: '${state.watchlistCount}'),
         _MetricCard(
           label: 'Average rating',
           value: state.averageRating == 0
               ? '–'
-              : state.averageRating.toStringAsFixed(1),
+              : '${state.averageRating.toStringAsFixed(1)} ★',
         ),
       ],
     );

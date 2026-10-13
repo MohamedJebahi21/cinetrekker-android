@@ -28,6 +28,24 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   final _scrollController = ScrollController();
   Timer? _debounce;
   String _type = 'all';
+  String _sortBy = 'relevance'; // 'relevance' | 'rating' | 'newest'
+
+  List<TmdbMedia> _getSortedResults(List<TmdbMedia> results) {
+    if (_sortBy == 'rating') {
+      final list = List<TmdbMedia>.from(results);
+      list.sort((a, b) => b.voteAverage.compareTo(a.voteAverage));
+      return list;
+    } else if (_sortBy == 'newest') {
+      final list = List<TmdbMedia>.from(results);
+      list.sort((a, b) {
+        final dateA = a.releaseDate ?? a.firstAirDate ?? '';
+        final dateB = b.releaseDate ?? b.firstAirDate ?? '';
+        return dateB.compareTo(dateA);
+      });
+      return list;
+    }
+    return results;
+  }
   List<String> _recentSearches = [
     'Oppenheimer',
     'Interstellar',
@@ -445,14 +463,99 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                     ),
                   ),
                 )
-              else
+              else ...[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '${state.results.length} Results',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                    PopupMenuButton<String>(
+                      initialValue: _sortBy,
+                      onSelected: (val) {
+                        Haptics.selection();
+                        setState(() => _sortBy = val);
+                      },
+                      color: theme.cardTheme.color ?? theme.colorScheme.surface,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(
+                          color: theme.colorScheme.outlineVariant,
+                        ),
+                      ),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.secondary,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: theme.colorScheme.outlineVariant,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.sort_rounded,
+                              size: 16,
+                              color: theme.colorScheme.primary,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              _sortBy == 'rating'
+                                  ? 'Top Rated'
+                                  : (_sortBy == 'newest'
+                                      ? 'Newest'
+                                      : 'Popularity'),
+                              style: GoogleFonts.dmSans(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: theme.colorScheme.onSurface,
+                              ),
+                            ),
+                            const SizedBox(width: 2),
+                            Icon(
+                              Icons.arrow_drop_down_rounded,
+                              size: 18,
+                              color: theme.colorScheme.onSurface,
+                            ),
+                          ],
+                        ),
+                      ),
+                      itemBuilder: (context) => [
+                        const PopupMenuItem(
+                          value: 'relevance',
+                          child: Text('Popularity / Relevance'),
+                        ),
+                        const PopupMenuItem(
+                          value: 'rating',
+                          child: Text('Highest Rated'),
+                        ),
+                        const PopupMenuItem(
+                          value: 'newest',
+                          child: Text('Newest Release'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
                 ListView.separated(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  itemCount: state.results.length,
+                  itemCount: _getSortedResults(state.results).length,
                   separatorBuilder: (_, __) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
-                    final item = state.results[index];
+                    final displayResults = _getSortedResults(state.results);
+                    final item = displayResults[index];
                     final isPerson =
                         item.mediaKind == 'person' || item.profilePath != null;
                     final heroTag =
@@ -627,6 +730,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                       );
                   },
                 ),
+              ],
 
               if (state.isLoading && state.results.isNotEmpty)
                 const Padding(

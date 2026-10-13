@@ -6,6 +6,10 @@ enum OfflineMutationType {
   removeFromWatchlist,
   addToWatched,
   removeFromWatched,
+  followShow,
+  unfollowShow,
+  markEpisodeWatched,
+  unmarkEpisodeWatched,
 }
 
 class OfflineMutation {
@@ -14,6 +18,7 @@ class OfflineMutation {
     required this.type,
     required this.payload,
     required this.createdAt,
+    this.userId,
   });
 
   factory OfflineMutation.fromJson(Map<String, dynamic> json) {
@@ -26,6 +31,7 @@ class OfflineMutation {
       payload: (json['payload'] as Map?)?.cast<String, dynamic>() ??
           <String, dynamic>{},
       createdAt: json['created_at'] as int? ?? 0,
+      userId: json['user_id'] as String?,
     );
   }
 
@@ -33,12 +39,14 @@ class OfflineMutation {
   final OfflineMutationType type;
   final Map<String, dynamic> payload;
   final int createdAt;
+  final String? userId;
 
   Map<String, dynamic> toJson() => <String, dynamic>{
         'id': id,
         'type': type.name,
         'payload': payload,
         'created_at': createdAt,
+        if (userId != null) 'user_id': userId,
       };
 }
 
@@ -63,7 +71,19 @@ class OfflineMutationQueue {
     }
   }
 
-  Future<void> enqueue(OfflineMutationType type, Map<String, dynamic> payload) async {
+  Future<List<OfflineMutation>> getQueueForUser(String? userId) async {
+    final all = await getQueue();
+    if (userId == null || userId.isEmpty) {
+      return all.where((m) => m.userId == null).toList();
+    }
+    return all.where((m) => m.userId == userId).toList();
+  }
+
+  Future<void> enqueue(
+    OfflineMutationType type,
+    Map<String, dynamic> payload, {
+    String? userId,
+  }) async {
     try {
       final current = await getQueue();
       final id = '${DateTime.now().millisecondsSinceEpoch}_${current.length}';
@@ -72,6 +92,7 @@ class OfflineMutationQueue {
         type: type,
         payload: payload,
         createdAt: DateTime.now().millisecondsSinceEpoch,
+        userId: userId,
       );
       current.add(mutation);
       await LocalCacheManager.instance.write(_queueCacheKey, <String, dynamic>{
@@ -95,6 +116,20 @@ class OfflineMutationQueue {
     }
   }
 
+  Future<void> clearQueueForUser(String? userId) async {
+    try {
+      final current = await getQueue();
+      final remaining = (userId == null || userId.isEmpty)
+          ? current.where((m) => m.userId != null).toList()
+          : current.where((m) => m.userId != userId).toList();
+      await LocalCacheManager.instance.write(_queueCacheKey, <String, dynamic>{
+        'mutations': remaining.map((m) => m.toJson()).toList(),
+      });
+    } catch (e) {
+      debugPrint('OfflineMutationQueue: Failed to clear queue for user: $e');
+    }
+  }
+
   Future<void> clear() async {
     try {
       await LocalCacheManager.instance.write(_queueCacheKey, <String, dynamic>{
@@ -104,4 +139,6 @@ class OfflineMutationQueue {
       debugPrint('OfflineMutationQueue: Failed to clear queue: $e');
     }
   }
+
+  Future<void> clearQueue() => clear();
 }

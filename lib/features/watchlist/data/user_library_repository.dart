@@ -23,9 +23,12 @@ class UserLibraryRepository {
 
   bool get _isSignedIn => _userId != null && _userId.isNotEmpty;
 
+  /// Public hook to trigger an offline queue flush when connectivity returns
+  Future<void> flushMutationQueue() => _flushMutationQueue();
+
   Future<void> _flushMutationQueue() async {
     if (!_isSignedIn) return;
-    final queue = await OfflineMutationQueue.instance.getQueue();
+    final queue = await OfflineMutationQueue.instance.getQueueForUser(_userId);
     if (queue.isEmpty) return;
 
     for (final mutation in queue) {
@@ -78,6 +81,49 @@ class UserLibraryRepository {
               'media_type': p['media_type'],
             });
             break;
+          case OfflineMutationType.followShow:
+            final p = mutation.payload;
+            await _supabaseRestApi.upsertRow('followed_shows', <String, dynamic>{
+              'user_id': _userId,
+              'show_id': p['show_id'],
+              if (p['show_name'] != null && (p['show_name'] as String).trim().isNotEmpty)
+                'show_name': (p['show_name'] as String).trim(),
+              if (p['poster_path'] != null) 'poster_path': p['poster_path'],
+              if (p['last_watched_season'] != null)
+                'last_watched_season': p['last_watched_season'],
+              if (p['last_watched_episode'] != null)
+                'last_watched_episode': p['last_watched_episode'],
+              if (p['followed_at'] != null) 'followed_at': p['followed_at'],
+            }, onConflict: 'user_id,show_id');
+            break;
+          case OfflineMutationType.unfollowShow:
+            final p = mutation.payload;
+            await _supabaseRestApi.deleteRows('followed_shows', equals: <String, dynamic>{
+              'user_id': _userId,
+              'show_id': p['show_id'],
+            });
+            break;
+          case OfflineMutationType.markEpisodeWatched:
+            final p = mutation.payload;
+            await _supabaseRestApi.upsertRow('watched_episodes', <String, dynamic>{
+              'user_id': _userId,
+              'show_id': p['show_id'],
+              'season_number': p['season_number'],
+              'episode_number': p['episode_number'],
+              if (p['episode_name'] != null) 'episode_name': p['episode_name'],
+              if (p['air_date'] != null) 'air_date': p['air_date'],
+              if (p['watched_at'] != null) 'watched_at': p['watched_at'],
+            }, onConflict: 'user_id,show_id,season_number,episode_number');
+            break;
+          case OfflineMutationType.unmarkEpisodeWatched:
+            final p = mutation.payload;
+            await _supabaseRestApi.deleteRows('watched_episodes', equals: <String, dynamic>{
+              'user_id': _userId,
+              'show_id': p['show_id'],
+              'season_number': p['season_number'],
+              'episode_number': p['episode_number'],
+            });
+            break;
         }
         await OfflineMutationQueue.instance.remove(mutation.id);
       } catch (_) {
@@ -114,7 +160,9 @@ class UserLibraryRepository {
       unawaited(_flushMutationQueue());
       return items;
     } catch (_) {
-      return _localStorage.readList(_watchlistCacheKey);
+      final list = await _localStorage.readList(_watchlistCacheKey);
+      if (list.isNotEmpty) return list;
+      return _localStorage.readList('cinetrekker_watchlist_cache');
     }
   }
 
@@ -149,7 +197,9 @@ class UserLibraryRepository {
       unawaited(_flushMutationQueue());
       return items;
     } catch (_) {
-      return _localStorage.readList(_watchedCacheKey);
+      final list = await _localStorage.readList(_watchedCacheKey);
+      if (list.isNotEmpty) return list;
+      return _localStorage.readList('cinetrekker_watched_cache');
     }
   }
 
@@ -201,6 +251,7 @@ class UserLibraryRepository {
     } catch (_) {
       await OfflineMutationQueue.instance.enqueue(
         OfflineMutationType.addToWatchlist,
+        userId: _userId,
         <String, dynamic>{
           'media_id': mediaId,
           'media_type': mediaType,
@@ -241,6 +292,7 @@ class UserLibraryRepository {
     } catch (_) {
       await OfflineMutationQueue.instance.enqueue(
         OfflineMutationType.removeFromWatchlist,
+        userId: _userId,
         <String, dynamic>{
           'media_id': mediaId,
           'media_type': mediaType,
@@ -307,6 +359,7 @@ class UserLibraryRepository {
     } catch (_) {
       await OfflineMutationQueue.instance.enqueue(
         OfflineMutationType.addToWatched,
+        userId: _userId,
         <String, dynamic>{
           'media_id': mediaId,
           'media_type': mediaType,
@@ -395,6 +448,7 @@ class UserLibraryRepository {
     } catch (_) {
       await OfflineMutationQueue.instance.enqueue(
         OfflineMutationType.removeFromWatched,
+        userId: _userId,
         <String, dynamic>{
           'media_id': mediaId,
           'media_type': mediaType,
@@ -416,9 +470,12 @@ class UserLibraryRepository {
         descending: true,
       );
       final items = rows.map(FollowedShowItem.fromJson).toList(growable: false);
-      await _localStorage.writeFollowedShows(_guestFollowedShowsKey, items);
+      await _localStorage.writeFollowedShows(_followedShowsCacheKey, items);
+      unawaited(_flushMutationQueue());
       return items;
     } catch (_) {
+      final cached = await _localStorage.readFollowedShows(_followedShowsCacheKey);
+      if (cached.isNotEmpty) return cached;
       return _localStorage.readFollowedShows(_guestFollowedShowsKey);
     }
   }
@@ -449,19 +506,23 @@ class UserLibraryRepository {
           .toList(growable: false);
       if (showId == null) {
         await _localStorage.writeWatchedEpisodes(
-          _guestWatchedEpisodesKey,
+          _watchedEpisodesCacheKey,
           items,
         );
       }
+      unawaited(_flushMutationQueue());
       return items;
     } catch (_) {
       final list = await _localStorage.readWatchedEpisodes(
-        _guestWatchedEpisodesKey,
+        _watchedEpisodesCacheKey,
       );
+      final source = list.isNotEmpty
+          ? list
+          : await _localStorage.readWatchedEpisodes(_guestWatchedEpisodesKey);
       if (showId != null) {
-        return list.where((ep) => ep.showId == showId).toList(growable: false);
+        return source.where((ep) => ep.showId == showId).toList(growable: false);
       }
-      return list;
+      return source;
     }
   }
 
@@ -479,40 +540,63 @@ class UserLibraryRepository {
     );
 
     final current = await _localStorage.readFollowedShows(
-      _guestFollowedShowsKey,
+      _followedShowsCacheKey,
     );
     final next = [...current.where((s) => s.showId != showId), item];
-    await _localStorage.writeFollowedShows(_guestFollowedShowsKey, next);
+    await _localStorage.writeFollowedShows(_followedShowsCacheKey, next);
 
     if (!_isSignedIn) {
       return;
     }
 
-    await _supabaseRestApi.upsertRow('followed_shows', <String, dynamic>{
-      'user_id': _userId,
-      'show_id': showId,
-      if (showName.trim().isNotEmpty) 'show_name': showName.trim(),
-      if (posterPath != null) 'poster_path': posterPath,
-    }, onConflict: 'user_id,show_id');
+    try {
+      await _supabaseRestApi.upsertRow('followed_shows', <String, dynamic>{
+        'user_id': _userId,
+        'show_id': showId,
+        if (showName.trim().isNotEmpty) 'show_name': showName.trim(),
+        if (posterPath != null) 'poster_path': posterPath,
+      }, onConflict: 'user_id,show_id');
+    } catch (_) {
+      await OfflineMutationQueue.instance.enqueue(
+        OfflineMutationType.followShow,
+        userId: _userId,
+        <String, dynamic>{
+          'show_id': showId,
+          'show_name': showName.trim(),
+          if (posterPath != null) 'poster_path': posterPath,
+          'followed_at': item.followedAt,
+        },
+      );
+    }
   }
 
   Future<void> unfollowShow({required int showId}) async {
     final current = await _localStorage.readFollowedShows(
-      _guestFollowedShowsKey,
+      _followedShowsCacheKey,
     );
     final next = current
         .where((s) => s.showId != showId)
         .toList(growable: false);
-    await _localStorage.writeFollowedShows(_guestFollowedShowsKey, next);
+    await _localStorage.writeFollowedShows(_followedShowsCacheKey, next);
 
     if (!_isSignedIn) {
       return;
     }
 
-    await _supabaseRestApi.deleteRows(
-      'followed_shows',
-      equals: <String, dynamic>{'user_id': _userId, 'show_id': showId},
-    );
+    try {
+      await _supabaseRestApi.deleteRows(
+        'followed_shows',
+        equals: <String, dynamic>{'user_id': _userId, 'show_id': showId},
+      );
+    } catch (_) {
+      await OfflineMutationQueue.instance.enqueue(
+        OfflineMutationType.unfollowShow,
+        userId: _userId,
+        <String, dynamic>{
+          'show_id': showId,
+        },
+      );
+    }
   }
 
   Future<void> markEpisodeWatched({
@@ -525,18 +609,19 @@ class UserLibraryRepository {
     String? posterPath,
   }) async {
     final validatedEpisodeName = _normalizeEpisodeName(episodeName);
+    final watchedAtIso = DateTime.now().toIso8601String();
     final epItem = WatchedEpisodeItem(
       showId: showId,
       seasonNumber: seasonNumber,
       episodeNumber: episodeNumber,
       episodeName: validatedEpisodeName,
       airDate: airDate,
-      watchedAt: DateTime.now().toIso8601String(),
+      watchedAt: watchedAtIso,
     );
 
-    // Save to guest local storage
+    // Save to isolated local cache
     final currentEps = await _localStorage.readWatchedEpisodes(
-      _guestWatchedEpisodesKey,
+      _watchedEpisodesCacheKey,
     );
     final nextEps = [
       ...currentEps.where(
@@ -547,11 +632,11 @@ class UserLibraryRepository {
       ),
       epItem,
     ];
-    await _localStorage.writeWatchedEpisodes(_guestWatchedEpisodesKey, nextEps);
+    await _localStorage.writeWatchedEpisodes(_watchedEpisodesCacheKey, nextEps);
 
     // Also track in followed shows
     final currentShows = await _localStorage.readFollowedShows(
-      _guestFollowedShowsKey,
+      _followedShowsCacheKey,
     );
     final showItem = FollowedShowItem(
       showId: showId,
@@ -564,48 +649,55 @@ class UserLibraryRepository {
           currentShows.where((s) => s.showId == showId).firstOrNull?.posterPath,
       lastWatchedSeason: seasonNumber,
       lastWatchedEpisode: episodeNumber,
-      followedAt: DateTime.now().toIso8601String(),
+      followedAt: watchedAtIso,
     );
     final nextShows = [
       ...currentShows.where((s) => s.showId != showId),
       showItem,
     ];
-    await _localStorage.writeFollowedShows(_guestFollowedShowsKey, nextShows);
+    await _localStorage.writeFollowedShows(_followedShowsCacheKey, nextShows);
 
-    // Also update guest watched with watching status
+    // Also update watched list with watching status
     await addToWatched(mediaId: showId, mediaType: 'tv', status: 'watching');
 
     if (!_isSignedIn) {
       return;
     }
 
-    await _supabaseRestApi.upsertRow('watched_episodes', <String, dynamic>{
-      'user_id': _userId,
-      'show_id': showId,
-      'season_number': seasonNumber,
-      'episode_number': episodeNumber,
-      'episode_name': validatedEpisodeName,
-      'air_date': airDate,
-      'watched_at': DateTime.now().toIso8601String(),
-    }, onConflict: 'user_id,show_id,season_number,episode_number');
+    try {
+      await _supabaseRestApi.upsertRow('watched_episodes', <String, dynamic>{
+        'user_id': _userId,
+        'show_id': showId,
+        'season_number': seasonNumber,
+        'episode_number': episodeNumber,
+        'episode_name': validatedEpisodeName,
+        'air_date': airDate,
+        'watched_at': watchedAtIso,
+      }, onConflict: 'user_id,show_id,season_number,episode_number');
 
-    await _supabaseRestApi.upsertRow('followed_shows', <String, dynamic>{
-      'user_id': _userId,
-      'show_id': showId,
-      if (showName != null && showName.trim().isNotEmpty)
-        'show_name': showName.trim(),
-      if (posterPath != null) 'poster_path': posterPath,
-      'last_watched_season': seasonNumber,
-      'last_watched_episode': episodeNumber,
-    }, onConflict: 'user_id,show_id');
-
-    await _supabaseRestApi.upsertRow('user_watched', <String, dynamic>{
-      'user_id': _userId,
-      'media_id': showId,
-      'media_type': 'tv',
-      'status': 'watching',
-      'watched_at': DateTime.now().toIso8601String(),
-    }, onConflict: 'user_id,media_id,media_type');
+      await _supabaseRestApi.upsertRow('followed_shows', <String, dynamic>{
+        'user_id': _userId,
+        'show_id': showId,
+        if (showName != null && showName.trim().isNotEmpty)
+          'show_name': showName.trim(),
+        if (posterPath != null) 'poster_path': posterPath,
+        'last_watched_season': seasonNumber,
+        'last_watched_episode': episodeNumber,
+      }, onConflict: 'user_id,show_id');
+    } catch (_) {
+      await OfflineMutationQueue.instance.enqueue(
+        OfflineMutationType.markEpisodeWatched,
+        userId: _userId,
+        <String, dynamic>{
+          'show_id': showId,
+          'season_number': seasonNumber,
+          'episode_number': episodeNumber,
+          if (validatedEpisodeName != null) 'episode_name': validatedEpisodeName,
+          if (airDate != null) 'air_date': airDate,
+          'watched_at': watchedAtIso,
+        },
+      );
+    }
   }
 
   Future<void> markSeasonWatched({
@@ -660,7 +752,7 @@ class UserLibraryRepository {
     required int episodeNumber,
   }) async {
     final currentEps = await _localStorage.readWatchedEpisodes(
-      _guestWatchedEpisodesKey,
+      _watchedEpisodesCacheKey,
     );
     final nextEps = currentEps
         .where(
@@ -670,34 +762,67 @@ class UserLibraryRepository {
                   ep.episodeNumber == episodeNumber),
         )
         .toList(growable: false);
-    await _localStorage.writeWatchedEpisodes(_guestWatchedEpisodesKey, nextEps);
+    await _localStorage.writeWatchedEpisodes(_watchedEpisodesCacheKey, nextEps);
 
     if (!_isSignedIn) {
       return;
     }
 
-    await _supabaseRestApi.deleteRows(
-      'watched_episodes',
-      equals: <String, dynamic>{
-        'user_id': _userId,
-        'show_id': showId,
-        'season_number': seasonNumber,
-        'episode_number': episodeNumber,
-      },
-    );
+    try {
+      await _supabaseRestApi.deleteRows(
+        'watched_episodes',
+        equals: <String, dynamic>{
+          'user_id': _userId,
+          'show_id': showId,
+          'season_number': seasonNumber,
+          'episode_number': episodeNumber,
+        },
+      );
+    } catch (_) {
+      await OfflineMutationQueue.instance.enqueue(
+        OfflineMutationType.unmarkEpisodeWatched,
+        userId: _userId,
+        <String, dynamic>{
+          'show_id': showId,
+          'season_number': seasonNumber,
+          'episode_number': episodeNumber,
+        },
+      );
+    }
+  }
+
+  Future<void> removeSeasonWatched({
+    required int showId,
+    required int seasonNumber,
+    required List<int> episodeNumbers,
+  }) async {
+    for (final epNum in episodeNumbers) {
+      await removeEpisodeWatched(
+        showId: showId,
+        seasonNumber: seasonNumber,
+        episodeNumber: epNum,
+      );
+    }
   }
 
   Future<void> clearLocalData() async {
-    await _localStorage.clear(_watchlistCacheKey);
-    await _localStorage.clear(_watchedCacheKey);
     await _localStorage.clear(_guestWatchlistKey);
     await _localStorage.clear(_guestWatchedKey);
     await _localStorage.clear(_guestFollowedShowsKey);
     await _localStorage.clear(_guestWatchedEpisodesKey);
+    await _localStorage.clear('cinetrekker_watchlist_cache');
+    await _localStorage.clear('cinetrekker_watched_cache');
+    if (_userId != null && _userId!.isNotEmpty) {
+      await _localStorage.clear('cinetrekker_watchlist_$_userId');
+      await _localStorage.clear('cinetrekker_watched_$_userId');
+      await _localStorage.clear('cinetrekker_followed_shows_$_userId');
+      await _localStorage.clear('cinetrekker_watched_episodes_$_userId');
+    }
   }
 
   Future<void> deleteAccountData() async {
     if (!_isSignedIn) {
+      await clearLocalData();
       return;
     }
 
@@ -732,8 +857,15 @@ class UserLibraryRepository {
     return trimmed;
   }
 
-  static const _watchlistCacheKey = 'cinetrekker_watchlist_cache';
-  static const _watchedCacheKey = 'cinetrekker_watched_cache';
+  String get _watchlistCacheKey =>
+      _isSignedIn ? 'cinetrekker_watchlist_$_userId' : _guestWatchlistKey;
+  String get _watchedCacheKey =>
+      _isSignedIn ? 'cinetrekker_watched_$_userId' : _guestWatchedKey;
+  String get _followedShowsCacheKey =>
+      _isSignedIn ? 'cinetrekker_followed_shows_$_userId' : _guestFollowedShowsKey;
+  String get _watchedEpisodesCacheKey =>
+      _isSignedIn ? 'cinetrekker_watched_episodes_$_userId' : _guestWatchedEpisodesKey;
+
   static const _guestWatchlistKey = 'mywatch_watchlist';
   static const _guestWatchedKey = 'mywatch_watched';
   static const _guestFollowedShowsKey = 'cinetrekker_guest_followed_shows_v1';
