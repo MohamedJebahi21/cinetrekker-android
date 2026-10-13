@@ -7,6 +7,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../core/models/media_models.dart';
+
 import '../../../core/localization/locale_controller.dart';
 import '../../../core/motion/haptic_service.dart';
 import '../../../shared/widgets/app_error_card.dart';
@@ -548,14 +550,16 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _getSortedResults(state.results).length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
+                Builder(
+                  builder: (context) {
                     final displayResults = _getSortedResults(state.results);
-                    final item = displayResults[index];
+                    return ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: displayResults.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        final item = displayResults[index];
                     final isPerson =
                         item.mediaKind == 'person' || item.profilePath != null;
                     final heroTag =
@@ -728,6 +732,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                           ),
                         ),
                       );
+                      },
+                    );
                   },
                 ),
               ],

@@ -251,7 +251,6 @@ class UserLibraryRepository {
     } catch (_) {
       await OfflineMutationQueue.instance.enqueue(
         OfflineMutationType.addToWatchlist,
-        userId: _userId,
         <String, dynamic>{
           'media_id': mediaId,
           'media_type': mediaType,
@@ -262,6 +261,7 @@ class UserLibraryRepository {
           if (voteAverage != null) 'vote_average': voteAverage,
           if (releaseDate != null) 'release_date': releaseDate,
         },
+        userId: _userId,
       );
     }
   }
@@ -292,11 +292,11 @@ class UserLibraryRepository {
     } catch (_) {
       await OfflineMutationQueue.instance.enqueue(
         OfflineMutationType.removeFromWatchlist,
-        userId: _userId,
         <String, dynamic>{
           'media_id': mediaId,
           'media_type': mediaType,
         },
+        userId: _userId,
       );
     }
   }
@@ -359,7 +359,6 @@ class UserLibraryRepository {
     } catch (_) {
       await OfflineMutationQueue.instance.enqueue(
         OfflineMutationType.addToWatched,
-        userId: _userId,
         <String, dynamic>{
           'media_id': mediaId,
           'media_type': mediaType,
@@ -373,6 +372,7 @@ class UserLibraryRepository {
           if (voteAverage != null) 'vote_average': voteAverage,
           if (releaseDate != null) 'release_date': releaseDate,
         },
+        userId: _userId,
       );
     }
   }
@@ -448,11 +448,11 @@ class UserLibraryRepository {
     } catch (_) {
       await OfflineMutationQueue.instance.enqueue(
         OfflineMutationType.removeFromWatched,
-        userId: _userId,
         <String, dynamic>{
           'media_id': mediaId,
           'media_type': mediaType,
         },
+        userId: _userId,
       );
     }
   }
@@ -559,13 +559,13 @@ class UserLibraryRepository {
     } catch (_) {
       await OfflineMutationQueue.instance.enqueue(
         OfflineMutationType.followShow,
-        userId: _userId,
         <String, dynamic>{
           'show_id': showId,
           'show_name': showName.trim(),
           if (posterPath != null) 'poster_path': posterPath,
           'followed_at': item.followedAt,
         },
+        userId: _userId,
       );
     }
   }
@@ -591,10 +591,10 @@ class UserLibraryRepository {
     } catch (_) {
       await OfflineMutationQueue.instance.enqueue(
         OfflineMutationType.unfollowShow,
-        userId: _userId,
         <String, dynamic>{
           'show_id': showId,
         },
+        userId: _userId,
       );
     }
   }
@@ -687,7 +687,6 @@ class UserLibraryRepository {
     } catch (_) {
       await OfflineMutationQueue.instance.enqueue(
         OfflineMutationType.markEpisodeWatched,
-        userId: _userId,
         <String, dynamic>{
           'show_id': showId,
           'season_number': seasonNumber,
@@ -696,6 +695,7 @@ class UserLibraryRepository {
           if (airDate != null) 'air_date': airDate,
           'watched_at': watchedAtIso,
         },
+        userId: _userId,
       );
     }
   }
@@ -781,12 +781,12 @@ class UserLibraryRepository {
     } catch (_) {
       await OfflineMutationQueue.instance.enqueue(
         OfflineMutationType.unmarkEpisodeWatched,
-        userId: _userId,
         <String, dynamic>{
           'show_id': showId,
           'season_number': seasonNumber,
           'episode_number': episodeNumber,
         },
+        userId: _userId,
       );
     }
   }
@@ -812,7 +812,7 @@ class UserLibraryRepository {
     await _localStorage.clear(_guestWatchedEpisodesKey);
     await _localStorage.clear('cinetrekker_watchlist_cache');
     await _localStorage.clear('cinetrekker_watched_cache');
-    if (_userId != null && _userId!.isNotEmpty) {
+    if (_userId != null && _userId.isNotEmpty) {
       await _localStorage.clear('cinetrekker_watchlist_$_userId');
       await _localStorage.clear('cinetrekker_watched_$_userId');
       await _localStorage.clear('cinetrekker_followed_shows_$_userId');

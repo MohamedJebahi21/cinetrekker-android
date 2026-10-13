@@ -2,7 +2,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/errors/app_error_messages.dart';
 import '../../../core/models/media_models.dart';
-import '../../tv_tracking/domain/tv_tracking_models.dart';
 import '../../watchlist/data/user_library_repository.dart';
 
 class YearInReviewState {
@@ -120,8 +119,8 @@ class YearInReviewController extends Notifier<YearInReviewState> {
       ]);
       final watchlist = results[0] as List<UserMediaItem>;
       final watched = results[1] as List<UserMediaItem>;
-      final episodes = results[2] as List<WatchedEpisodeRecord>;
-      final followedShows = results[3] as List<FollowedShowRecord>;
+      final episodes = results[2] as List<WatchedEpisodeItem>;
+      final followedShows = results[3] as List<FollowedShowItem>;
 
       final rated = watched.where((item) => item.rating != null).toList();
       final ratings = rated
