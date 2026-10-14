@@ -12,6 +12,9 @@ import '../../../core/content_safety/content_safety_controller.dart';
 import '../../../core/localization/locale_controller.dart';
 import '../../../core/motion/haptic_service.dart';
 import '../../../core/theme/theme_controller.dart';
+import '../../../core/constants/app_constants.dart';
+import '../../../core/updates/app_update_controller.dart';
+import '../../../core/updates/app_update_modal.dart';
 import '../../collections/data/collections_repository.dart';
 import '../../profile/data/profile_repository.dart';
 import '../../profile/presentation/profile_controller.dart';
@@ -344,6 +347,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final safetyNotifier = ref.read(contentSafetyControllerProvider.notifier);
     final profileState = ref.watch(profileControllerProvider);
     final profileNotifier = ref.read(profileControllerProvider.notifier);
+    final updateState = ref.watch(appUpdateControllerProvider);
+    final updateNotifier = ref.read(appUpdateControllerProvider.notifier);
     _syncFromProfile(profileState.profile);
     _syncFromSafety(safetyState);
 
@@ -893,6 +898,280 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ),
             ),
+          const SizedBox(height: 24),
+
+          // Section: App & updates
+          Text(
+            'App & updates',
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              letterSpacing: -0.3,
+              color: theme.colorScheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: _glassCard(theme, isDark),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Image.asset(
+                        'assets/images/logo.png',
+                        width: 40,
+                        height: 40,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'CineTrekker',
+                            style: GoogleFonts.spaceGrotesk(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: theme.colorScheme.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            AppConstants.fullVersion,
+                            style: GoogleFonts.dmSans(
+                              fontSize: 12.5,
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.55,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (updateState.hasUpdate)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Text(
+                          'Update Available',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+
+                // Status message
+                if (updateState.isChecking) ...[
+                  Row(
+                    children: [
+                      const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator.adaptive(strokeWidth: 2),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Checking for newer versions...',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 13,
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    ],
+                  ),
+                ] else if (updateState.hasUpdate) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: theme.colorScheme.primary.withValues(alpha: 0.25),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.system_update_alt_rounded,
+                              size: 16,
+                              color: theme.colorScheme.primary,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Version v${updateState.updateInfo?.latestVersion} is available!',
+                              style: GoogleFonts.spaceGrotesk(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w700,
+                                color: theme.colorScheme.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'A new update with fixes and improvements is available for download.',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 12,
+                            color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ] else if (updateState.isUpToDate) ...[
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.check_circle_rounded,
+                        size: 16,
+                        color: Colors.green,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          "You're on the latest release of CineTrekker.",
+                          style: GoogleFonts.dmSans(
+                            fontSize: 13,
+                            color: Colors.green.shade700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ] else if (updateState.hasError) ...[
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline_rounded,
+                        size: 16,
+                        color: theme.colorScheme.error,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Could not check for updates. Tap to retry.',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 13,
+                            color: theme.colorScheme.error,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ] else ...[
+                  Text(
+                    'Check GitHub releases for updates and new feature drops.',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 13,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+                    ),
+                  ),
+                ],
+
+                const SizedBox(height: 14),
+
+                // Action buttons
+                Row(
+                  children: [
+                    if (updateState.hasUpdate) ...[
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: () async {
+                            Haptics.medium();
+                            if (updateState.updateInfo?.apkDownloadUrl != null) {
+                              await updateNotifier.openDirectDownload();
+                            } else {
+                              await updateNotifier.openUpdatePage();
+                            }
+                          },
+                          icon: const Icon(Icons.download_rounded, size: 18),
+                          label: const Text('Update Now'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: theme.colorScheme.primary,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      OutlinedButton(
+                        onPressed: () => showAppUpdateModal(context, ref),
+                        style: OutlinedButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        child: const Text('Details'),
+                      ),
+                    ] else ...[
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: updateState.isChecking
+                              ? null
+                              : () async {
+                                  Haptics.selection();
+                                  final info = await updateNotifier.checkForUpdates(isManual: true);
+                                  if (info != null && !info.hasUpdate && context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          "You're on the latest version (${AppConstants.versionDisplay}).",
+                                          style: GoogleFonts.dmSans(),
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                },
+                          icon: updateState.isChecking
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator.adaptive(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.refresh_rounded, size: 18),
+                          label: Text(
+                            updateState.isChecking ? 'Checking...' : 'Check for updates',
+                            style: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 24),
 
           // Section: Data & Privacy

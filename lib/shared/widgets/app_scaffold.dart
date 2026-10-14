@@ -8,6 +8,9 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/auth/auth_controller.dart';
 import '../../features/profile/presentation/profile_controller.dart';
 import '../../features/social/presentation/notifications_controller.dart';
+import '../../core/constants/app_constants.dart';
+import '../../core/updates/app_update_controller.dart';
+import '../../core/updates/app_update_modal.dart';
 
 class AppScaffold extends ConsumerStatefulWidget {
   const AppScaffold({super.key, required this.child, required this.location});
@@ -301,6 +304,7 @@ class _CineTrekkerDrawer extends ConsumerWidget {
     final isDark = theme.brightness == Brightness.dark;
     final primary = theme.colorScheme.primary;
     final watchedCount = profileState.watchedCount;
+    final updateState = ref.watch(appUpdateControllerProvider);
 
     // Milestone calculation matching website:
     String levelName = 'Casual Viewer';
@@ -843,6 +847,19 @@ class _CineTrekkerDrawer extends ConsumerWidget {
                         onTap: () {
                           onClose();
                           context.push('/accessibility');
+                        },
+                      ),
+                      _DrawerItem(
+                        icon: Icons.system_update_rounded,
+                        label: 'Check for Updates',
+                        desc: updateState.hasUpdate
+                            ? 'Update available (v${updateState.updateInfo?.latestVersion})'
+                            : '${AppConstants.versionDisplay} • Check latest release',
+                        path: '/updates',
+                        currentPath: currentPath,
+                        onTap: () {
+                          onClose();
+                          showAppUpdateModal(context, ref);
                         },
                       ),
                     ],

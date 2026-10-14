@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../core/constants/app_constants.dart';
+import '../../../core/updates/app_update_controller.dart';
+import '../../../core/updates/app_update_modal.dart';
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
@@ -56,7 +60,7 @@ class AboutScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Version 1.1.0 (build 3)',
+                      AppConstants.fullVersion,
                       style: GoogleFonts.dmSans(
                         fontSize: 12,
                         color: theme.colorScheme.onSurface.withValues(
@@ -68,6 +72,35 @@ class AboutScreen extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+          Consumer(
+            builder: (context, ref, _) {
+              final updateState = ref.watch(appUpdateControllerProvider);
+              return Container(
+                margin: const EdgeInsets.only(bottom: 20),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => showAppUpdateModal(context, ref),
+                    icon: updateState.hasUpdate
+                        ? Icon(Icons.auto_awesome_rounded, size: 18, color: theme.colorScheme.primary)
+                        : const Icon(Icons.system_update_rounded, size: 18),
+                    label: Text(
+                      updateState.hasUpdate
+                          ? 'Update Available (v${updateState.updateInfo?.latestVersion})'
+                          : 'Check for Updates',
+                      style: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
           Text(
             'About CineTrekker and the connected viewing ecosystem',
