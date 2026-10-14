@@ -1,5 +1,19 @@
 # CineTrekker Android — Engineering Changelog
 
+## 2026-10-14 — Release v1.1.3: Native Android Polish, Durable Offline Sync & Discovery Upgrades
+
+### Added
+* **Durable Storage & Persistence**: Migrated all local and library caches from `Directory.systemTemp` to permanent app documents storage with automatic migration fallback, preventing OS-driven cache evictions.
+* **User-Isolated Offline Mutation Queue**: Expanded `OfflineMutationQueue` to support 8 distinct operations covering movie, watchlist, TV show, and episode tracking with per-user queue isolation and automatic flush when connectivity is restored.
+* **TV Season Lifecycle & Unmark Support**: Added dynamic season-level toggle allowing users to unmark an entire watched season in one tap with atomic batch rollback and offline mutation queueing.
+* **Search Results Sorting**: Integrated interactive sorting options (Popularity / Relevance, Highest Rated, Newest Release) with memoized list sorting.
+* **Home "Recently Watched" Carousel**: Added a horizontal rail on the home screen showing recently finished titles with star ratings and direct detail links.
+* **Viewing Insights & Social Recap**: Year in Review now computes weekday viewing distributions from actual timestamps, tracks episode totals, and provides one-tap clipboard export.
+* **Native Android 12+ Experience**: Added adaptive vector launcher icons, dark/light Android 12 splash screen themes, and native ZoomPageTransitionsBuilder navigation transitions.
+* **Expanded Test Suite**: Added test coverage for offline mutation queues and recap generation, reaching 41 passing tests.
+
+---
+
 ## 2026-09-21 — Release v1.1.2: Hotfix — Kotlin 2.2 + sentry_flutter compatibility
 
 ### Fixed
