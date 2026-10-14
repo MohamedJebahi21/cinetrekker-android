@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -13,7 +14,7 @@ Future<void> showAppUpdateModal(BuildContext context, WidgetRef ref) async {
   final currentState = ref.read(appUpdateControllerProvider);
   if (currentState.status == AppUpdateStatus.idle ||
       currentState.status == AppUpdateStatus.error) {
-    ref.read(appUpdateControllerProvider.notifier).checkForUpdates(isManual: true);
+    unawaited(ref.read(appUpdateControllerProvider.notifier).checkForUpdates(isManual: true));
   }
 
   await showModalBottomSheet<void>(
