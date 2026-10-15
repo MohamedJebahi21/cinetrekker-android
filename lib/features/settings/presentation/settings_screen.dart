@@ -11,6 +11,7 @@ import '../../../core/auth/auth_controller.dart';
 import '../../../core/content_safety/content_safety_controller.dart';
 import '../../../core/localization/locale_controller.dart';
 import '../../../core/motion/haptic_service.dart';
+import '../../../core/reminders/episode_reminder_controller.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/updates/app_update_controller.dart';
@@ -347,6 +348,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final safetyNotifier = ref.read(contentSafetyControllerProvider.notifier);
     final profileState = ref.watch(profileControllerProvider);
     final profileNotifier = ref.read(profileControllerProvider.notifier);
+    final reminderState = ref.watch(episodeReminderControllerProvider);
     final updateState = ref.watch(appUpdateControllerProvider);
     final updateNotifier = ref.read(appUpdateControllerProvider.notifier);
     _syncFromProfile(profileState.profile);
@@ -898,6 +900,83 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ),
             ),
+          const SizedBox(height: 24),
+
+          Text(
+            'Episode reminders',
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              letterSpacing: -0.3,
+              color: theme.colorScheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: _glassCard(theme, isDark),
+            child: Column(
+              children: [
+                SwitchListTile.adaptive(
+                  contentPadding: EdgeInsets.zero,
+                  value: reminderState.preferences.enabled,
+                  onChanged: (value) => ref
+                      .read(episodeReminderControllerProvider.notifier)
+                      .toggleGlobal(value),
+                  title: Text(
+                    'Episode release reminders',
+                    style: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text(
+                    'Uses upcoming air dates saved for tracked shows. Air times may be unavailable.',
+                    style: GoogleFonts.dmSans(fontSize: 12),
+                  ),
+                ),
+                if (reminderState.preferences.enabled) ...[
+                  const Divider(height: 1),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      'Reminder timing',
+                      style: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: Text(
+                      'Current: ${reminderState.preferences.leadDaysLabel} at ${reminderState.preferences.reminderHour.toString().padLeft(2, '0')}:00',
+                      style: GoogleFonts.dmSans(fontSize: 12),
+                    ),
+                    trailing: DropdownButton<int>(
+                      value: reminderState.preferences.leadDays,
+                      underline: const SizedBox.shrink(),
+                      items: const [
+                        DropdownMenuItem(value: 0, child: Text('On day')),
+                        DropdownMenuItem(value: 1, child: Text('1 day before')),
+                        DropdownMenuItem(value: 2, child: Text('2 days before')),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) {
+                          ref.read(episodeReminderControllerProvider.notifier).setLeadDays(value);
+                        }
+                      },
+                    ),
+                  ),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      'Upcoming tracked episodes',
+                      style: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: Text(
+                      reminderState.reminders.isEmpty
+                          ? 'No upcoming air dates available for tracked shows.'
+                          : '${reminderState.activeCount} reminder${reminderState.activeCount == 1 ? '' : 's'} available',
+                      style: GoogleFonts.dmSans(fontSize: 12),
+                    ),
+                    trailing: Icon(Icons.notifications_none_rounded, color: theme.colorScheme.primary),
+                  ),
+                ],
+              ],
+            ),
+          ),
           const SizedBox(height: 24),
 
           // Section: App & updates

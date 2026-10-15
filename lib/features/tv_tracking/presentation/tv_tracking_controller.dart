@@ -187,6 +187,8 @@ class TvTrackingController extends Notifier<TvTrackingState> {
     required int showId,
     required String showName,
     String? posterPath,
+    String? nextAirDate,
+    String? nextEpisodeName,
   }) async {
     final previousFollowed = state.followedShows;
     final optimistic = FollowedShowItem(
@@ -195,6 +197,8 @@ class TvTrackingController extends Notifier<TvTrackingState> {
       posterPath: posterPath,
       userId: 'user',
       followedAt: DateTime.now().toIso8601String(),
+      nextAirDate: nextAirDate,
+      nextEpisodeName: nextEpisodeName,
     );
     state = state.copyWith(
       followedShows: [
@@ -206,7 +210,13 @@ class TvTrackingController extends Notifier<TvTrackingState> {
     try {
       await ref
           .read(userLibraryRepositoryProvider)
-          .followShow(showId: showId, showName: showName, posterPath: posterPath);
+          .followShow(
+            showId: showId,
+            showName: showName,
+            posterPath: posterPath,
+            nextAirDate: nextAirDate,
+            nextEpisodeName: nextEpisodeName,
+          );
       await load(silent: true);
     } catch (_) {
       state = state.copyWith(followedShows: previousFollowed);

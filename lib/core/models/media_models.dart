@@ -358,6 +358,8 @@ class TmdbMediaDetails extends TmdbMedia {
     this.numberOfSeasons,
     this.numberOfEpisodes,
     this.imdbId,
+    this.nextEpisodeToAir,
+    this.lastEpisodeToAir,
   });
 
   final int? runtime;
@@ -372,6 +374,8 @@ class TmdbMediaDetails extends TmdbMedia {
   final TmdbWatchProvidersGroup? watchProviders;
   final int? numberOfSeasons;
   final int? numberOfEpisodes;
+  final TmdbEpisode? nextEpisodeToAir;
+  final TmdbEpisode? lastEpisodeToAir;
 
   factory TmdbMediaDetails.fromJson(Map<String, dynamic> json) {
     final base = TmdbMedia.fromJson(json);
@@ -497,6 +501,12 @@ class TmdbMediaDetails extends TmdbMedia {
       seasons: seasonsList,
       watchProviders: providers,
       imdbId: imdbId,
+      nextEpisodeToAir: json['next_episode_to_air'] is Map
+          ? TmdbEpisode.fromJson((json['next_episode_to_air'] as Map).cast<String, dynamic>())
+          : null,
+      lastEpisodeToAir: json['last_episode_to_air'] is Map
+          ? TmdbEpisode.fromJson((json['last_episode_to_air'] as Map).cast<String, dynamic>())
+          : null,
     );
   }
 }

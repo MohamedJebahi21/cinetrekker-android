@@ -19,4 +19,6 @@ class AppConstants {
   static const String authSessionStorageKey = 'cinetrekker_auth_session';
   static const String contentSafetyStorageKey = 'cinetrekker_content_safety';
   static const String reducedMotionStorageKey = 'cinetrekker_reduced_motion';
+  static const String episodeRemindersStorageKey =
+      'cinetrekker_episode_reminders_pref';
 }

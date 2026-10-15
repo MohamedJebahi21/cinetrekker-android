@@ -89,6 +89,8 @@ class UserLibraryRepository {
               if (p['show_name'] != null && (p['show_name'] as String).trim().isNotEmpty)
                 'show_name': (p['show_name'] as String).trim(),
               if (p['poster_path'] != null) 'poster_path': p['poster_path'],
+              if (p['next_air_date'] != null) 'next_air_date': p['next_air_date'],
+              if (p['next_episode_name'] != null) 'next_episode_name': p['next_episode_name'],
               if (p['last_watched_season'] != null)
                 'last_watched_season': p['last_watched_season'],
               if (p['last_watched_episode'] != null)
@@ -530,6 +532,8 @@ class UserLibraryRepository {
     required int showId,
     required String showName,
     String? posterPath,
+    String? nextAirDate,
+    String? nextEpisodeName,
   }) async {
     final item = FollowedShowItem(
       showId: showId,
@@ -537,6 +541,8 @@ class UserLibraryRepository {
       posterPath: posterPath,
       userId: _userId ?? 'guest',
       followedAt: DateTime.now().toIso8601String(),
+      nextAirDate: nextAirDate,
+      nextEpisodeName: nextEpisodeName,
     );
 
     final current = await _localStorage.readFollowedShows(
@@ -555,6 +561,8 @@ class UserLibraryRepository {
         'show_id': showId,
         if (showName.trim().isNotEmpty) 'show_name': showName.trim(),
         if (posterPath != null) 'poster_path': posterPath,
+        if (nextAirDate != null) 'next_air_date': nextAirDate,
+        if (nextEpisodeName != null) 'next_episode_name': nextEpisodeName,
       }, onConflict: 'user_id,show_id');
     } catch (_) {
       await OfflineMutationQueue.instance.enqueue(
@@ -563,6 +571,8 @@ class UserLibraryRepository {
           'show_id': showId,
           'show_name': showName.trim(),
           if (posterPath != null) 'poster_path': posterPath,
+          if (nextAirDate != null) 'next_air_date': nextAirDate,
+          if (nextEpisodeName != null) 'next_episode_name': nextEpisodeName,
           'followed_at': item.followedAt,
         },
         userId: _userId,

@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/auth/auth_controller.dart';
 import '../../../core/models/media_models.dart';
+import '../../../core/reminders/episode_reminder_controller.dart';
 import '../../../shared/widgets/app_error_card.dart';
 import '../../../shared/widgets/bouncy_pressable.dart';
 import '../../../shared/widgets/app_cached_image.dart';
@@ -54,7 +55,13 @@ class _TvTrackingScreenState extends ConsumerState<TvTrackingScreen> {
       context: ctx,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _AiringScheduleSheet(shows: upcoming),
+      builder: (_) => _AiringScheduleSheet(
+        shows: upcoming,
+        reminderState: ref.read(episodeReminderControllerProvider),
+        onToggleReminder: (showId) => ref
+            .read(episodeReminderControllerProvider.notifier)
+            .toggleShowReminder(showId),
+      ),
     );
   }
 
@@ -679,9 +686,15 @@ class _RecentEpisodeTile extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _AiringScheduleSheet extends StatelessWidget {
-  const _AiringScheduleSheet({required this.shows});
+  const _AiringScheduleSheet({
+    required this.shows,
+    required this.reminderState,
+    required this.onToggleReminder,
+  });
 
   final List<FollowedShowItem> shows;
+  final EpisodeReminderState reminderState;
+  final Future<void> Function(int showId) onToggleReminder;
 
   String _formatDate(String isoDate) {
     final d = DateTime.tryParse(isoDate);
@@ -871,6 +884,20 @@ class _AiringScheduleSheet extends StatelessWidget {
                                   ),
                                 ),
                               ],
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: reminderState.preferences.isShowEnabled(show.showId)
+                                ? 'Mute episode reminder'
+                                : 'Enable episode reminder',
+                            onPressed: () => onToggleReminder(show.showId),
+                            icon: Icon(
+                              reminderState.preferences.isShowEnabled(show.showId)
+                                  ? Icons.notifications_active_outlined
+                                  : Icons.notifications_off_outlined,
+                              color: reminderState.preferences.isShowEnabled(show.showId)
+                                  ? theme.colorScheme.primary
+                                  : theme.colorScheme.onSurface.withValues(alpha: 0.5),
                             ),
                           ),
                           if (daysLabel.isNotEmpty)

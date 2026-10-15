@@ -1768,6 +1768,8 @@ class _TvSeasonAccordionState extends ConsumerState<_TvSeasonAccordion> {
                       showId: widget.tvId,
                       showName: widget.details.displayTitle,
                       posterPath: widget.details.posterPath,
+                      nextAirDate: widget.details.nextEpisodeToAir?.airDate,
+                      nextEpisodeName: widget.details.nextEpisodeToAir?.name,
                     );
                   }
                 },
