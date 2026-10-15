@@ -197,7 +197,9 @@ void main() {
       );
 
       final state = EpisodeReminderState(
-        preferences: const EpisodeReminderPreference(),
+        preferences: const EpisodeReminderPreference(
+          showReminders: {20: false},
+        ),
         reminders: [itemEnabled, itemMuted],
       );
 

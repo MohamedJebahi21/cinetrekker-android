@@ -28,7 +28,7 @@ class EpisodeReminderState {
 
   bool isShowReminded(int showId) =>
       preferences.isShowEnabled(showId) &&
-      reminders.any((r) => r.showId == showId && r.isUpcoming);
+      reminders.any((r) => r.showId == showId && r.isEnabled && r.isUpcoming);
 
   EpisodeReminderState copyWith({
     EpisodeReminderPreference? preferences,
