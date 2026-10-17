@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:cinetrekker_android/core/models/media_models.dart';
-import 'package:cinetrekker_android/core/reminders/episode_reminder_models.dart';
 import 'package:cinetrekker_android/core/reminders/episode_reminder_service.dart';
 import 'package:cinetrekker_android/core/reminders/episode_reminder_controller.dart';
 
