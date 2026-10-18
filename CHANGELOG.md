@@ -1,5 +1,19 @@
 # CineTrekker Android — Engineering Changelog
 
+## 2026-10-18 — Release v1.1.4: In-App Update Checker, Episode Release Reminders & Calendar Sync
+
+### Added
+* **In-App Update Checker**: Integrated GitHub Release checking accessible via Settings > "Check for updates", navigation drawer, and About screen with semver comparison, release notes preview modal, and direct APK download redirection.
+* **Episode & Release Reminders**:
+  * Track upcoming air dates and next episode details parsed directly from TMDB metadata for followed series.
+  * Customizable reminder preferences in Settings with configurable lead timing (on air day, 1 day before, 2 days before) and reminder hour.
+  * Per-show notification mute overrides on the Airing Schedule sheet.
+  * One-tap device Google Calendar event creation pre-populated with episode title, series name, and air dates.
+* **Metadata Persistence**: Enhanced local durable storage and Supabase schema compatibility to store and sync `next_air_date` and `next_episode_name`.
+* **Testing & Analysis Quality**: Expanded automated test suite to 56 tests with zero static analysis warnings or infos.
+
+---
+
 ## 2026-10-14 — Release v1.1.3: Native Android Polish, Durable Offline Sync & Discovery Upgrades
 
 ### Added

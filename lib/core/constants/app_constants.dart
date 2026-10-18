@@ -1,8 +1,8 @@
 class AppConstants {
   AppConstants._();
 
-  static const String appVersion = '1.1.3';
-  static const int buildNumber = 6;
+  static const String appVersion = '1.1.4';
+  static const int buildNumber = 7;
   static const String fullVersion = 'Version $appVersion (build $buildNumber)';
   static const String versionDisplay = 'v$appVersion';
 
