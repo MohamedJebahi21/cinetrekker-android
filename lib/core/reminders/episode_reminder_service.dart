@@ -4,13 +4,21 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../constants/app_constants.dart';
 import '../models/media_models.dart';
+import '../notifications/local_notification_service.dart';
 import 'episode_reminder_models.dart';
 
 class EpisodeReminderService {
-  EpisodeReminderService({FlutterSecureStorage? storage})
-      : _storage = storage ?? const FlutterSecureStorage();
+  EpisodeReminderService({
+    FlutterSecureStorage? storage,
+    LocalNotificationService? notificationService,
+  })  : _storage = storage ?? const FlutterSecureStorage(),
+        _notificationService =
+            notificationService ?? LocalNotificationService.instance;
 
   final FlutterSecureStorage _storage;
+  final LocalNotificationService _notificationService;
+
+  LocalNotificationService get notificationService => _notificationService;
 
   Future<EpisodeReminderPreference> loadPreferences() async {
     try {
@@ -88,6 +96,46 @@ class EpisodeReminderService {
       return await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (_) {
       return false;
+    }
+  }
+
+  Future<void> syncScheduledNotifications({
+    required List<EpisodeReminderItem> reminders,
+    required EpisodeReminderPreference preferences,
+  }) async {
+    if (!preferences.enabled) {
+      await _notificationService.cancelAllReminders();
+      return;
+    }
+
+    await _notificationService.syncReminders(
+      items: reminders,
+      leadDays: preferences.leadDays,
+      reminderHour: preferences.reminderHour,
+      quietHoursEnabled: preferences.quietHoursEnabled,
+      quietHoursStart: preferences.quietHoursStart,
+      quietHoursEnd: preferences.quietHoursEnd,
+    );
+  }
+
+  Future<void> scheduleOrCancelShowNotification({
+    required EpisodeReminderItem item,
+    required EpisodeReminderPreference preferences,
+  }) async {
+    if (!preferences.enabled || !preferences.isShowEnabled(item.showId)) {
+      await _notificationService.cancelReminder(item.showId);
+      return;
+    }
+
+    if (item.isUpcoming) {
+      await _notificationService.scheduleEpisodeReminder(
+        item: item,
+        leadDays: preferences.leadDays,
+        reminderHour: preferences.reminderHour,
+        quietHoursEnabled: preferences.quietHoursEnabled,
+        quietHoursStart: preferences.quietHoursStart,
+        quietHoursEnd: preferences.quietHoursEnd,
+      );
     }
   }
 }

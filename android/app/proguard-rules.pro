@@ -21,3 +21,7 @@
 # Sentry
 -dontwarn io.sentry.**
 -keep class io.sentry.** { *; }
+
+# Flutter Local Notifications
+-keep class com.dexterous.** { *; }
+-dontwarn com.dexterous.**

@@ -1,5 +1,26 @@
 # CineTrekker Android — Engineering Changelog
 
+## 2026-10-19 — Release v1.1.5: Native OS Episode Notifications, Android 13+ Permissions & Exact Alarms
+
+### Added
+* **Native Operating System Notifications**:
+  * Integrated `flutter_local_notifications` and `timezone` for offline, native device alerts when new episodes or seasons of tracked TV series air.
+  * Dedicated Android notification channel (`episode_releases`: "Episode & Release Reminders") with high importance, heads-up banner, and sound.
+  * Automatic synchronization of device alarm triggers whenever tracked series, watch status, or reminder preferences change.
+* **Android 13+ Notification Permissions & Exact Alarms**:
+  * Added `POST_NOTIFICATIONS`, `SCHEDULE_EXACT_ALARM`, `USE_EXACT_ALARM`, and `RECEIVE_BOOT_COMPLETED` permissions to `AndroidManifest.xml`.
+  * Configured `ScheduledNotificationReceiver` and `ScheduledNotificationBootReceiver` for reliable alarm restoration across device reboots.
+  * Enabled Android core library desugaring in Gradle for reliable modern date/time scheduling across all Android API versions.
+* **Notification Scheduling Controls**:
+  * Customizable delivery hour dropdown in Settings (e.g., 8:00 AM, 9:00 AM, 12:00 PM, 6:00 PM, 8:00 PM).
+  * Configurable Quiet Hours (10:00 PM – 8:00 AM) that automatically delay late-night episode notifications until the next morning.
+  * "Test notification" action in Settings to immediately verify notification permissions, sound, and banner rendering on the device.
+* **Notification Deep Linking**:
+  * Tapping any scheduled or immediate notification navigates directly to the series details page (`/tv/:showId`), supporting foreground, background, and cold app launch.
+* **Automated Tests**:
+  * Added unit test suite covering timezone-aware scheduling, quiet hours adjustments, and deterministic notification ID generation.
+
+---
 ## 2026-10-18 — Release v1.1.4: In-App Update Checker, Episode Release Reminders & Calendar Sync
 
 ### Added

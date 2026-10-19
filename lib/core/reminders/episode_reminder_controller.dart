@@ -2,12 +2,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/tv_tracking/presentation/tv_tracking_controller.dart';
 import '../models/media_models.dart';
+import '../notifications/local_notification_service.dart';
 import 'episode_reminder_models.dart';
 export 'episode_reminder_models.dart';
 import 'episode_reminder_service.dart';
 
+final localNotificationServiceProvider =
+    Provider<LocalNotificationService>((ref) {
+  return LocalNotificationService.instance;
+});
+
 final episodeReminderServiceProvider = Provider<EpisodeReminderService>((ref) {
-  return EpisodeReminderService();
+  final notificationService = ref.watch(localNotificationServiceProvider);
+  return EpisodeReminderService(notificationService: notificationService);
 });
 
 class EpisodeReminderState {
@@ -64,6 +71,10 @@ class EpisodeReminderController extends StateNotifier<EpisodeReminderState> {
       reminders: reminders,
       isLoading: false,
     );
+    await _service.syncScheduledNotifications(
+      reminders: reminders,
+      preferences: prefs,
+    );
   }
 
   void updateFollowedShows(List<FollowedShowItem> shows) {
@@ -73,6 +84,10 @@ class EpisodeReminderController extends StateNotifier<EpisodeReminderState> {
       preferences: state.preferences,
     );
     state = state.copyWith(reminders: reminders);
+    _service.syncScheduledNotifications(
+      reminders: reminders,
+      preferences: state.preferences,
+    );
   }
 
   Future<void> toggleGlobal(bool enabled) async {
@@ -83,12 +98,53 @@ class EpisodeReminderController extends StateNotifier<EpisodeReminderState> {
       preferences: updated,
     );
     state = state.copyWith(preferences: updated, reminders: reminders);
+    await _service.syncScheduledNotifications(
+      reminders: reminders,
+      preferences: updated,
+    );
   }
 
   Future<void> setLeadDays(int leadDays) async {
     final updated = state.preferences.copyWith(leadDays: leadDays);
     await _service.savePreferences(updated);
     state = state.copyWith(preferences: updated);
+    await _service.syncScheduledNotifications(
+      reminders: state.reminders,
+      preferences: updated,
+    );
+  }
+
+  Future<void> setReminderHour(int reminderHour) async {
+    final updated = state.preferences.copyWith(reminderHour: reminderHour);
+    await _service.savePreferences(updated);
+    state = state.copyWith(preferences: updated);
+    await _service.syncScheduledNotifications(
+      reminders: state.reminders,
+      preferences: updated,
+    );
+  }
+
+  Future<void> toggleQuietHours(bool enabled) async {
+    final updated = state.preferences.copyWith(quietHoursEnabled: enabled);
+    await _service.savePreferences(updated);
+    state = state.copyWith(preferences: updated);
+    await _service.syncScheduledNotifications(
+      reminders: state.reminders,
+      preferences: updated,
+    );
+  }
+
+  Future<void> setQuietHours(int start, int end) async {
+    final updated = state.preferences.copyWith(
+      quietHoursStart: start,
+      quietHoursEnd: end,
+    );
+    await _service.savePreferences(updated);
+    state = state.copyWith(preferences: updated);
+    await _service.syncScheduledNotifications(
+      reminders: state.reminders,
+      preferences: updated,
+    );
   }
 
   Future<void> toggleShowReminder(int showId) async {
@@ -103,12 +159,42 @@ class EpisodeReminderController extends StateNotifier<EpisodeReminderState> {
       preferences: updated,
     );
     state = state.copyWith(preferences: updated, reminders: reminders);
+
+    final showItem = reminders.cast<EpisodeReminderItem?>().firstWhere(
+          (r) => r?.showId == showId,
+          orElse: () => null,
+        );
+    if (showItem != null) {
+      await _service.scheduleOrCancelShowNotification(
+        item: showItem,
+        preferences: updated,
+      );
+    } else {
+      await _service.notificationService.cancelReminder(showId);
+    }
   }
 
   Future<bool> addToCalendar(EpisodeReminderItem item) async {
     return await _service.launchCalendarEvent(
       item,
       reminderHour: state.preferences.reminderHour,
+    );
+  }
+
+  Future<bool> requestNotificationPermissions() async {
+    return await _service.notificationService.requestPermission();
+  }
+
+  Future<bool> areNotificationsEnabled() async {
+    return await _service.notificationService.areNotificationsEnabled();
+  }
+
+  Future<bool> sendTestNotification() async {
+    return await _service.notificationService.showImmediateNotification(
+      title: 'CineTrekker Notifications Active',
+      body:
+          'You will receive alerts when new episodes of your tracked TV series air.',
+      payload: '/tv-tracking',
     );
   }
 }

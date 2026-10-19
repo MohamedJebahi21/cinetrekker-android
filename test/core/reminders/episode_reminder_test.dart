@@ -47,11 +47,17 @@ void main() {
         enabled: false,
         leadDays: 2,
         reminderHour: 18,
+        quietHoursEnabled: true,
+        quietHoursStart: 23,
+        quietHoursEnd: 7,
       );
 
       expect(updated.enabled, isFalse);
       expect(updated.leadDays, 2);
       expect(updated.reminderHour, 18);
+      expect(updated.quietHoursEnabled, isTrue);
+      expect(updated.quietHoursStart, 23);
+      expect(updated.quietHoursEnd, 7);
       expect(updated.leadDaysLabel, '2 days before');
       expect(updated.isShowEnabled(123), isFalse); // master switch disabled
     });

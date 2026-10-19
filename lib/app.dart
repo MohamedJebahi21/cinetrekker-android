@@ -8,15 +8,45 @@ import 'core/accessibility/text_scale_controller.dart';
 import 'core/localization/locale_controller.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_controller.dart';
+import 'package:go_router/go_router.dart';
+import 'core/notifications/local_notification_service.dart';
 import 'core/widgets/offline_banner.dart';
 import 'router/app_router.dart';
 import 'shared/widgets/startup_config_gate.dart';
 
-class CineTrekkerApp extends ConsumerWidget {
+class CineTrekkerApp extends ConsumerStatefulWidget {
   const CineTrekkerApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CineTrekkerApp> createState() => _CineTrekkerAppState();
+}
+
+class _CineTrekkerAppState extends ConsumerState<CineTrekkerApp> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      LocalNotificationService.instance.onNotificationTapped = (payload) {
+        if (payload != null && payload.isNotEmpty) {
+          final navContext = rootNavigatorKey.currentContext;
+          if (navContext != null) {
+            GoRouter.of(navContext).push(payload);
+          }
+        }
+      };
+
+      final pending = LocalNotificationService.instance.consumePendingRoute();
+      if (pending != null && pending.isNotEmpty) {
+        final navContext = rootNavigatorKey.currentContext;
+        if (navContext != null) {
+          GoRouter.of(navContext).push(pending);
+        }
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final themeStyle = ref.watch(themeControllerProvider);
     final textScaleStyle = ref.watch(textScaleControllerProvider);
     final fontSizeScale = ref.watch(fontSizeScaleControllerProvider);

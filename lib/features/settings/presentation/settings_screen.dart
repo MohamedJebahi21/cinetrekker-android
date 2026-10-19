@@ -920,15 +920,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 SwitchListTile.adaptive(
                   contentPadding: EdgeInsets.zero,
                   value: reminderState.preferences.enabled,
-                  onChanged: (value) => ref
-                      .read(episodeReminderControllerProvider.notifier)
-                      .toggleGlobal(value),
+                  onChanged: (value) async {
+                    if (value) {
+                      await ref
+                          .read(episodeReminderControllerProvider.notifier)
+                          .requestNotificationPermissions();
+                    }
+                    await ref
+                        .read(episodeReminderControllerProvider.notifier)
+                        .toggleGlobal(value);
+                  },
                   title: Text(
                     'Episode release reminders',
                     style: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
                   ),
                   subtitle: Text(
-                    'Uses upcoming air dates saved for tracked shows. Air times may be unavailable.',
+                    'Schedules native Android notifications for upcoming tracked TV episodes.',
                     style: GoogleFonts.dmSans(fontSize: 12),
                   ),
                 ),
@@ -937,11 +944,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     title: Text(
-                      'Reminder timing',
+                      'Lead timing',
                       style: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
                     ),
                     subtitle: Text(
-                      'Current: ${reminderState.preferences.leadDaysLabel} at ${reminderState.preferences.reminderHour.toString().padLeft(2, '0')}:00',
+                      'Notify ${reminderState.preferences.leadDaysLabel}',
                       style: GoogleFonts.dmSans(fontSize: 12),
                     ),
                     trailing: DropdownButton<int>(
@@ -962,16 +969,85 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     title: Text(
-                      'Upcoming tracked episodes',
+                      'Alert hour',
+                      style: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: Text(
+                      'Scheduled at ${reminderState.preferences.reminderHour.toString().padLeft(2, '0')}:00',
+                      style: GoogleFonts.dmSans(fontSize: 12),
+                    ),
+                    trailing: DropdownButton<int>(
+                      value: reminderState.preferences.reminderHour,
+                      underline: const SizedBox.shrink(),
+                      items: const [
+                        DropdownMenuItem(value: 8, child: Text('08:00 AM')),
+                        DropdownMenuItem(value: 9, child: Text('09:00 AM')),
+                        DropdownMenuItem(value: 12, child: Text('12:00 PM')),
+                        DropdownMenuItem(value: 18, child: Text('06:00 PM')),
+                        DropdownMenuItem(value: 20, child: Text('08:00 PM')),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) {
+                          ref.read(episodeReminderControllerProvider.notifier).setReminderHour(value);
+                        }
+                      },
+                    ),
+                  ),
+                  SwitchListTile.adaptive(
+                    contentPadding: EdgeInsets.zero,
+                    value: reminderState.preferences.quietHoursEnabled,
+                    onChanged: (value) => ref
+                        .read(episodeReminderControllerProvider.notifier)
+                        .toggleQuietHours(value),
+                    title: Text(
+                      'Quiet hours (10 PM - 8 AM)',
+                      style: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: Text(
+                      'Delays alerts during late night hours until 8:00 AM.',
+                      style: GoogleFonts.dmSans(fontSize: 12),
+                    ),
+                  ),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      'Upcoming scheduled alerts',
                       style: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
                     ),
                     subtitle: Text(
                       reminderState.reminders.isEmpty
                           ? 'No upcoming air dates available for tracked shows.'
-                          : '${reminderState.activeCount} reminder${reminderState.activeCount == 1 ? '' : 's'} available',
+                          : '${reminderState.activeCount} scheduled alert${reminderState.activeCount == 1 ? '' : 's'}',
                       style: GoogleFonts.dmSans(fontSize: 12),
                     ),
-                    trailing: Icon(Icons.notifications_none_rounded, color: theme.colorScheme.primary),
+                    trailing: Icon(Icons.notifications_active_rounded, color: theme.colorScheme.primary),
+                  ),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      'Test notification',
+                      style: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: Text(
+                      'Verify sound and notification banner on this device',
+                      style: GoogleFonts.dmSans(fontSize: 12),
+                    ),
+                    trailing: OutlinedButton.icon(
+                      icon: const Icon(Icons.send_rounded, size: 16),
+                      label: const Text('Test'),
+                      onPressed: () async {
+                        await ref
+                            .read(episodeReminderControllerProvider.notifier)
+                            .sendTestNotification();
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Test notification sent to your notification tray.'),
+                            ),
+                          );
+                        }
+                      },
+                    ),
                   ),
                 ],
               ],

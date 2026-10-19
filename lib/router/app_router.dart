@@ -31,7 +31,7 @@ import '../features/watchlist/presentation/watchlist_screen.dart';
 import '../features/parity/presentation/feature_parity_screen.dart';
 import '../shared/widgets/app_scaffold.dart';
 
-final _rootNavigatorKey = GlobalKey<NavigatorState>();
+final rootNavigatorKey = GlobalKey<NavigatorState>();
 
 /// Premium transition: subtle slide-up + fade-in
 Page<T> buildPageWithSlideTransition<T>({
@@ -96,7 +96,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authControllerProvider);
 
   return GoRouter(
-    navigatorKey: _rootNavigatorKey,
+    navigatorKey: rootNavigatorKey,
     initialLocation: '/',
     observers: [ref.read(analyticsObserverProvider)],
     redirect: (context, state) {
@@ -119,7 +119,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     routes: [
       // ── Full-screen routes (no bottom nav) ────────────────────────
       GoRoute(
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: rootNavigatorKey,
         path: '/login',
         pageBuilder: (context, state) => buildPageWithSlideTransition(
           state: state,
@@ -127,7 +127,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: rootNavigatorKey,
         path: '/signup',
         pageBuilder: (context, state) => buildPageWithSlideTransition(
           state: state,
@@ -135,7 +135,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: rootNavigatorKey,
         path: '/auth/callback',
         pageBuilder: (context, state) => buildPageWithSlideTransition(
           state: state,
@@ -143,7 +143,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: rootNavigatorKey,
         path: '/auth',
         pageBuilder: (context, state) => buildPageWithSlideTransition(
           state: state,
@@ -151,7 +151,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: rootNavigatorKey,
         path: '/auth/reset',
         pageBuilder: (context, state) => buildPageWithSlideTransition(
           state: state,
@@ -159,7 +159,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: rootNavigatorKey,
         path: '/reset',
         pageBuilder: (context, state) => buildPageWithSlideTransition(
           state: state,
@@ -167,19 +167,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: rootNavigatorKey,
         path: '/movie/:mediaId',
         redirect: (context, state) =>
             '/details/movie/${state.pathParameters['mediaId']}',
       ),
       GoRoute(
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: rootNavigatorKey,
         path: '/tv/:mediaId',
         redirect: (context, state) =>
             '/details/tv/${state.pathParameters['mediaId']}',
       ),
       GoRoute(
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: rootNavigatorKey,
         path: '/details/:mediaType/:mediaId',
         pageBuilder: (context, state) {
           final mediaType = state.pathParameters['mediaType'] ?? 'movie';
@@ -197,7 +197,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: rootNavigatorKey,
         path: '/person/:personId',
         pageBuilder: (context, state) {
           final personId =
@@ -209,7 +209,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: rootNavigatorKey,
         path: '/feedback',
         pageBuilder: (context, state) => buildPageWithSlideTransition(
           state: state,
@@ -217,7 +217,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: rootNavigatorKey,
         path: '/user/:userId',
         pageBuilder: (context, state) => buildPageWithSlideTransition(
           state: state,
@@ -227,7 +227,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: rootNavigatorKey,
         path: '/about',
         pageBuilder: (context, state) => buildPageWithSlideTransition(
           state: state,
@@ -235,7 +235,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: rootNavigatorKey,
         path: '/cookies',
         pageBuilder: (context, state) => buildPageWithSlideTransition(
           state: state,
@@ -243,7 +243,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: rootNavigatorKey,
         path: '/terms',
         pageBuilder: (context, state) => buildPageWithSlideTransition(
           state: state,
@@ -251,7 +251,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: rootNavigatorKey,
         path: '/privacy',
         pageBuilder: (context, state) => buildPageWithSlideTransition(
           state: state,
@@ -259,7 +259,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: rootNavigatorKey,
         path: '/people',
         pageBuilder: (context, state) => buildPageWithSlideTransition(
           state: state,
@@ -267,7 +267,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: rootNavigatorKey,
         path: '/collections',
         pageBuilder: (context, state) => buildPageWithSlideTransition(
           state: state,
@@ -275,7 +275,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: rootNavigatorKey,
         path: '/achievements',
         pageBuilder: (context, state) => buildPageWithSlideTransition(
           state: state,
@@ -283,7 +283,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: rootNavigatorKey,
         path: '/year-in-review',
         pageBuilder: (context, state) => buildPageWithSlideTransition(
           state: state,
@@ -291,7 +291,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: rootNavigatorKey,
         path: '/tv-tracking',
         pageBuilder: (context, state) => buildPageWithSlideTransition(
           state: state,

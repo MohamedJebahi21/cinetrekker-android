@@ -9,6 +9,7 @@ import 'app.dart';
 import 'core/auth/oauth_callback_host.dart';
 import 'core/constants/environment.dart';
 import 'core/errors/app_crash_fallback.dart';
+import 'core/notifications/local_notification_service.dart';
 import 'core/utils/crash_reporting_service.dart';
 
 Future<void> main() async {
@@ -23,6 +24,8 @@ Future<void> main() async {
           CrashReportingService.instance.initialize(
             sentryEnabled: Environment.hasSentryConfig,
           );
+
+          unawaited(LocalNotificationService.instance.initialize());
 
           ErrorWidget.builder = (_) => const AppCrashFallback();
 
