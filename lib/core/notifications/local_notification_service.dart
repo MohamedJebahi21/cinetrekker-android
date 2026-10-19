@@ -266,7 +266,7 @@ class LocalNotificationService {
   /// Cancels an existing notification for a given showId.
   Future<void> cancelReminder(int showId) async {
     try {
-      await _plugin.cancel(generateNotificationId(showId));
+      await _plugin.cancel(id: generateNotificationId(showId));
     } catch (_) {}
   }
 
