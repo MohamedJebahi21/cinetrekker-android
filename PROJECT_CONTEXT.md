@@ -11,14 +11,14 @@
   - Rich cinephile analytics (ratings distribution, watch time, 6-month viewing timeline, rank progression).
   - Offline-first reliability with optimistic local mutations and automated remote sync.
   - Flagship Android ergonomics: Material You styling, AMOLED pure black, haptic feedback, custom typography scaling, and TalkBack accessibility.
-- **Current Status**: **Production Release v1.1.0 (Build 3)**. Fully audited, signed with production upload key, and published on GitHub Releases.
+- **Current Status**: **Production Release v1.1.5 (Build 8)**. GitHub Release and APK/AAB assets were verified on 2026-10-19. Current release: [v1.1.5](https://github.com/MohamedJebahi21/cinetrekker-android/releases/tag/v1.1.5); latest: [GitHub Releases](https://github.com/MohamedJebahi21/cinetrekker-android/releases/latest). CI run #49 passed analysis and 62 tests.
 
 ---
 
 ## 2. Technology Stack & Dependencies
 
 ### Core Framework & Runtime:
-- **Flutter SDK**: 3.x (Dart 3.9+ / 3.x)
+- **Flutter SDK**: 3.x (Dart 3.10+ / 3.x)
 - **Target OS**: Android 7.0+ (minSdkVersion: 24, targetSdkVersion: 36, compileSdkVersion: 36)
 - **Native Android Engine**: Kotlin 2.2.20, Gradle 8.14.2, Android Gradle Plugin 8.11.1, NDK 28.2.13676358
 
@@ -32,6 +32,8 @@
 - `sentry_flutter: ^8.14.2` — Crash reporting and error diagnostics
 - `url_launcher: ^6.3.1` — Safe external URL launching (trailer YouTube links, legal URLs)
 - `app_links: ^6.4.1` — Android deep linking and App Links (`/auth/callback`)
+- `flutter_local_notifications: ^22.3.2` — local Android episode reminders and notification tap routing
+- `timezone: ^0.11.2` — zoned notification scheduling
 - `crypto: ^3.0.6` — SHA-256 code verifier generation for PKCE OAuth 2.0 flow
 - `flutter_localizations` (SDK) — Internationalization delegates
 
@@ -39,13 +41,13 @@
 
 ## 3. Environment Variables & Constants
 
-All runtime configuration is injected via `--dart-define` or `--dart-define-from-file=.env`:
+Runtime configuration accepts `--dart-define` or `--dart-define-from-file=.env`; production fallback endpoints are bundled in `lib/core/constants/environment.dart`.
 
 | Key | Mandatory | Description | Fallback / Behavior |
 |---|---|---|---|
-| `CINETREKKER_SUPABASE_URL` | **Yes** | Base URL for Supabase backend project | App shows config error if missing |
-| `CINETREKKER_SUPABASE_ANON_KEY`| **Yes** | Anonymous client API key for Supabase PostgREST/Auth | App shows config error if missing |
-| `CINETREKKER_API_BASE_URL` | **Yes** | Base URL for backend server proxy (`https://cinetrekker.vercel.app`) | Routes `/api/tmdb-proxy` & `/api/feedback` |
+| `CINETREKKER_SUPABASE_URL` | No for default build | Base URL for Supabase backend project | Uses the production fallback in `Environment` unless overridden |
+| `CINETREKKER_SUPABASE_ANON_KEY`| No for default build | Anonymous client API key for Supabase PostgREST/Auth | Uses the production fallback in `Environment` unless overridden |
+| `CINETREKKER_API_BASE_URL` | No for default build | Base URL for backend server proxy | Uses `https://cinetrekker.vercel.app` unless overridden; routes `/api/tmdb-proxy` & `/api/feedback` |
 | `CINETREKKER_SENTRY_DSN` | No | Sentry DSN endpoint for crash analytics | If omitted, crashes log locally only |
 
 ### Storage Keys (`AppConstants` in `lib/core/constants/app_constants.dart`):
