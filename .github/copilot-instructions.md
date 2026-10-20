@@ -8,7 +8,7 @@ When generating or refactoring code in this repository:
 4. Satisfy the completion checklist in **`DEFINITION_OF_DONE.md`**.
 
 Key Engineering Invariants:
-- Framework: Flutter 3.x, Dart 3.9+, Riverpod 2.6 for state management, GoRouter 16.3 for routing.
+- Framework: Flutter 3.x, Dart 3.10+, Riverpod 2.6 for state management, GoRouter 16.3 for routing.
 - Never query TMDB directly from the client; always route through `/api/tmdb-proxy` on `Environment.apiBaseUrl`.
 - Supabase access uses Row Level Security (RLS) in PostgreSQL; client-side filters are not authorization.
 - Re-use shared widgets in `lib/shared/widgets/` (`BouncyPressable`, `AppCachedImage`, `AppErrorCard`, `AppScaffold`).
