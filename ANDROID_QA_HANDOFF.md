@@ -1,6 +1,23 @@
 # CineTrekker Android QA Handoff
 
-## Release artifacts
+> **Historical handoff:** This document describes an earlier build and contains superseded local artifact paths, version numbers, and/or test results. The current published release is [CineTrekker v1.1.5](https://github.com/MohamedJebahi21/cinetrekker-android/releases/tag/v1.1.5). For current install/download links, use the [README](README.md); for v1.1.5 release details and checksums, use the [release page](https://github.com/MohamedJebahi21/cinetrekker-android/releases/tag/v1.1.5). Do not rely on historical local build hashes or status statements as evidence for v1.1.5.
+
+
+## Current published release: v1.1.5
+
+- Release page: https://github.com/MohamedJebahi21/cinetrekker-android/releases/tag/v1.1.5
+- Direct APK: https://github.com/MohamedJebahi21/cinetrekker-android/releases/download/v1.1.5/cinetrekker-v1.1.5.apk
+- App Bundle: https://github.com/MohamedJebahi21/cinetrekker-android/releases/download/v1.1.5/cinetrekker-v1.1.5.aab
+- CI run #49 passed analysis and all 62 automated tests: https://github.com/MohamedJebahi21/cinetrekker-android/actions/runs/39251141897
+- Release workflow #10 succeeded and uploaded both assets: https://github.com/MohamedJebahi21/cinetrekker-android/actions/runs/39251418864
+- APK SHA-256: `0b3d078e388803b60f0f3c46423469c1c793d8ffb6d480e48d8f98fe7cef22f8`
+- AAB SHA-256: `b26ab013e4519f496b7622e762c859a1347d4ea0aa115cc85592e73bc806b2b4`
+
+These are CI/build verification results, not physical-device QA. Notification permissions, exact-alarm availability, reboot restoration, timezone behavior, tap routing, and signed upgrade behavior should still be tested on target devices.
+
+---
+
+## Historical Release artifacts
 
 The refreshed signed release APK is available on the Windows machine at:
 
