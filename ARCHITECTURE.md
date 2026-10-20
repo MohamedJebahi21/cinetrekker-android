@@ -162,3 +162,9 @@ The router in `lib/router/app_router.dart` uses **GoRouter** with a dual navigat
 2. **Offline Resilience**: Guest mode and offline usage must always display cached content and allow local list edits. Do not block the app behind a mandatory login screen.
 3. **Typography Scaling**: Font size scaling operates on `MediaQuery.textScaler` in `lib/app.dart`. Widgets must use `GoogleFonts.spaceGrotesk` and `GoogleFonts.dmSans` without hardcoded line wrapping constraints that clip at 1.30× scale.
 4. **Haptics and Semantics**: User mutations (watchlist, favorites, rating submissions) must trigger tactile feedback via `Haptics` and screen-reader announcements via `AppSemantics` (`SemanticsService.sendAnnouncement`).
+
+## 6. Native Episode Notifications (v1.1.5)
+
+The episode reminder flow is exposed through `EpisodeReminderController` and `EpisodeReminderService`. Followed-show and preference changes cause the controller to recompute reminders and synchronize them with `LocalNotificationService` (`lib/core/notifications/local_notification_service.dart`). The service initializes the notification channel, checks/requests Android notification permission, and schedules one notification ID per show with a TV route payload. Android manifest receivers restore plugin-managed schedules after reboot or app replacement.
+
+Important operational constraints: scheduling uses exact-while-idle mode and therefore Android exact-alarm/notification permissions and device policy can affect delivery. The timezone database is initialized, but the app does not currently discover and assign the device's IANA timezone; `tz.local` therefore has not been confirmed to match the device. Local-time correctness across non-UTC zones has not been verified. Notification behavior should be device-tested before treating delivery timing or reboot restoration as certified. See [v1.1.5 release notes](https://github.com/MohamedJebahi21/cinetrekker-android/releases/tag/v1.1.5).
