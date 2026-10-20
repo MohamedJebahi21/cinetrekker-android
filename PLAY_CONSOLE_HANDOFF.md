@@ -1,8 +1,18 @@
 # CineTrekker Google Play Console Handoff
 
+> **Historical handoff:** This document describes an earlier build and contains superseded local artifact paths, version numbers, and/or test results. The current published release is [CineTrekker v1.1.5](https://github.com/MohamedJebahi21/cinetrekker-android/releases/tag/v1.1.5). For current install/download links, use the [README](README.md); for v1.1.5 release details and checksums, use the [release page](https://github.com/MohamedJebahi21/cinetrekker-android/releases/tag/v1.1.5). Do not rely on historical local build hashes or status statements as evidence for v1.1.5.
+
+
 **Package:** `com.cinetrekker.android`  
-**Release:** `1.0.0+1`  
+**Latest GitHub release:** [CineTrekker v1.1.5](https://github.com/MohamedJebahi21/cinetrekker-android/releases/tag/v1.1.5) (historical store-preparation notes below refer to older source state)  
 **Canonical privacy policy:** [https://cinetrekker.vercel.app/privacy](https://cinetrekker.vercel.app/privacy)
+
+## Latest GitHub build
+
+- Release page: https://github.com/MohamedJebahi21/cinetrekker-android/releases/tag/v1.1.5
+- Direct APK: https://github.com/MohamedJebahi21/cinetrekker-android/releases/download/v1.1.5/cinetrekker-v1.1.5.apk
+- App Bundle: https://github.com/MohamedJebahi21/cinetrekker-android/releases/download/v1.1.5/cinetrekker-v1.1.5.aab
+- Automated CI passed analysis and 62 tests; the release workflow completed and uploaded the artifacts. Physical-device QA is still separate.
 
 ## Publication status
 
