@@ -18,9 +18,20 @@
 * **Notification Deep Linking**:
   * Tapping any scheduled or immediate notification navigates directly to the series details page (`/tv/:showId`), supporting foreground, background, and cold app launch.
 * **Automated Tests**:
-  * Added unit test suite covering timezone-aware scheduling, quiet hours adjustments, and deterministic notification ID generation.
+  * Added unit tests for scheduled date arithmetic, quiet-hour adjustments, and deterministic notification ID generation. Device IANA timezone discovery and physical-device notification delivery were not verified for this release.
+
+### Published v1.1.5 artifacts and verification
+
+- [Release page](https://github.com/MohamedJebahi21/cinetrekker-android/releases/tag/v1.1.5)
+- [Download APK](https://github.com/MohamedJebahi21/cinetrekker-android/releases/download/v1.1.5/cinetrekker-v1.1.5.apk) — SHA-256: `0b3d078e388803b60f0f3c46423469c1c793d8ffb6d480e48d8f98fe7cef22f8`
+- [Download AAB](https://github.com/MohamedJebahi21/cinetrekker-android/releases/download/v1.1.5/cinetrekker-v1.1.5.aab) — SHA-256: `b26ab013e4519f496b7622e762c859a1347d4ea0aa115cc85592e73bc806b2b4`
+- [CI run #49](https://github.com/MohamedJebahi21/cinetrekker-android/actions/runs/39251141897): analysis passed and 62 tests passed.
+- [Release workflow #10](https://github.com/MohamedJebahi21/cinetrekker-android/actions/runs/39251418864): succeeded; both assets uploaded.
+
+> CI and release build results do not replace physical-device validation. Exact-alarm permission behavior, device-local timezone accuracy, reboot restoration, notification tap routing, and actual notification delivery still require device testing.
 
 ---
+
 ## 2026-10-18 — Release v1.1.4: In-App Update Checker, Episode Release Reminders & Calendar Sync
 
 ### Added
