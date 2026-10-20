@@ -1,5 +1,8 @@
 # CineTrekker Android — Final Audit and Google Play Handoff
 
+> **Historical handoff:** This document describes an earlier build and contains superseded local artifact paths, version numbers, and/or test results. The current published release is [CineTrekker v1.1.5](https://github.com/MohamedJebahi21/cinetrekker-android/releases/tag/v1.1.5). For current install/download links, use the [README](README.md); for v1.1.5 release details and checksums, use the [release page](https://github.com/MohamedJebahi21/cinetrekker-android/releases/tag/v1.1.5). Do not rely on historical local build hashes or status statements as evidence for v1.1.5.
+
+
 **Prepared:** 21 August 2026  
 **Application ID:** `com.cinetrekker.android`  
 **Application version:** `1.0.0+1`  
