@@ -7,10 +7,10 @@
 **Premium Android Cinema Companion**
 
 [![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter&logoColor=white)](https://flutter.dev)
-[![Dart](https://img.shields.io/badge/Dart-3.x-0175C2?logo=dart&logoColor=white)](https://dart.dev)
-[![Android](https://img.shields.io/badge/Android-7.0%2B-3DDC84?logo=android&logoColor=white)](https://developer.android.com)
+[![Dart](https://img.shields.io/badge/Dart-3.10%2B-0175C2?logo=dart&logoColor=white)](https://dart.dev)
+[![Android](https://img.shields.io/badge/Android-7.0%2B-3DDC84?logo=android)](https://developer.android.com)
 [![License](https://img.shields.io/badge/License-Proprietary-red)](LICENSE)
-[![Build](https://img.shields.io/github/actions/workflow/status/MohamedJebahi21/cinetrekker-android/ci.yml?branch=main&label=CI&logo=github-actions&logoColor=white)](https://github.com/MohamedJebahi21/cinetrekker-android/actions)
+[![Build](https://img.shields.io/github/actions/workflow/status/MohamedJebahi21/cinetrekker-android/ci.yml?branch=main&label=CI&logo=github-actions&logoColor=white)](https://github.com/MohamedJebahi21/cinetrekker-android/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/MohamedJebahi21/cinetrekker-android?label=Latest%20Release&color=success)](https://github.com/MohamedJebahi21/cinetrekker-android/releases/latest)
 
 *Discover. Track. Share.*
@@ -19,19 +19,19 @@
 
 ---
 
-## ⬇️ Download
+## ⬇️ Download the latest release
 
-> **Get the latest release directly on your Android device:**
+**CineTrekker v1.1.5** includes native episode reminders. Download the APK directly to your Android device:
 
 <div align="center">
 
-[![Download APK](https://img.shields.io/badge/Download%20APK-v1.0.1-2ea44f?style=for-the-badge&logo=android&logoColor=white)](https://github.com/MohamedJebahi21/cinetrekker-android/releases/download/v1.0.1/cinetrekker-v1.0.1.apk)
+[![Download APK](https://img.shields.io/badge/Download%20APK-v1.1.5-2ea44f?style=for-the-badge&logo=android&logoColor=white)](https://github.com/MohamedJebahi21/cinetrekker-android/releases/download/v1.1.5/cinetrekker-v1.1.5.apk)
+
+[**View release notes and all downloads**](https://github.com/MohamedJebahi21/cinetrekker-android/releases/tag/v1.1.5) · [All releases](https://github.com/MohamedJebahi21/cinetrekker-android/releases)
 
 </div>
 
-> **Note:** Before installing, go to **Settings → Security → Install unknown apps** and enable it for your browser or file manager. CineTrekker requires **Android 7.0 (API 24)** or higher.
-
-All releases are available on the [**Releases page**](https://github.com/MohamedJebahi21/cinetrekker-android/releases).
+To install the APK, allow **Install unknown apps** for your browser or file manager when Android prompts you, then open the downloaded APK. The app requires **Android 7.0 (API 24)** or higher. On Android 13+, grant notification permission in Settings to receive episode reminders.
 
 ---
 
@@ -41,7 +41,9 @@ All releases are available on the [**Releases page**](https://github.com/Mohamed
 |---|---|
 | 🎬 **Movie & TV Discovery** | Browse trending, top-rated, and upcoming titles powered by TMDB |
 | 📋 **Watchlist Management** | Save movies and TV shows to your personal watchlist |
-| 📺 **TV Season Tracking** | Track which episodes you've watched, season by season |
+| 📺 **TV Season Tracking** | Track watched episodes season by season |
+| 🔔 **Native Episode Notifications** | Schedule OS notifications for upcoming episodes, with delivery-time controls, quiet hours, reboot restoration, and tap-to-open show details |
+| 🔄 **In-App Update Checker** | Check GitHub Releases and open the latest download page from Settings |
 | 🎭 **People Profiles** | Explore cast and crew filmographies |
 | 📦 **Collections** | Browse official movie collections (e.g. Marvel, DC, Bond) |
 | 🏆 **Achievements** | Unlock cinematic achievements as you track your viewing |
@@ -67,7 +69,9 @@ lib/
 │   ├── auth/         # OAuth 2.0 (PKCE) auth controller & deep link handler
 │   ├── constants/    # Environment variables & app-wide constants
 │   ├── errors/       # Crash fallback & error boundary
-│   ├── storage/      # Secure session + local file cache
+│   ├── notifications/# Native episode notification scheduling and routing
+│   ├── reminders/    # Reminder preferences and schedule computation
+│   ├── storage/      # Secure session + durable app data storage
 │   ├── theme/        # Material You theme + colors
 │   └── widgets/      # Shared core widgets (offline banner, etc.)
 ├── features/
@@ -80,8 +84,8 @@ lib/
 │   ├── collections/  # Official collections browser
 │   ├── people/       # Cast & crew profiles
 │   ├── achievements/ # Gamified viewing achievements
-│   ├── social/       # Comments & notifications
-│   └── settings/     # App settings, theme, region, legal
+│   ├── social/       # Comments & in-app notifications
+│   └── settings/     # App settings, theme, region, reminders, legal
 └── shared/
     └── widgets/      # App-wide shared UI components
 ```
@@ -91,7 +95,8 @@ lib/
 - **Navigation**: [GoRouter](https://pub.dev/packages/go_router)
 - **Backend**: [Supabase](https://supabase.com) (Auth, Database, REST + RLS)
 - **Movie Data**: [TMDB API](https://www.themoviedb.org/documentation/api) via server proxy
-- **Local Storage**: `flutter_secure_storage` (sessions) + file cache (offline)
+- **Local Notifications**: [`flutter_local_notifications`](https://pub.dev/packages/flutter_local_notifications) and [`timezone`](https://pub.dev/packages/timezone)
+- **Local Storage**: `flutter_secure_storage` (sessions) + durable app data cache
 - **Crash reporting**: [Sentry](https://sentry.io) (optional via `CINETREKKER_SENTRY_DSN`)
 
 ---
@@ -102,8 +107,8 @@ lib/
 
 | Tool | Version |
 |---|---|
-| Flutter | 3.x |
-| Dart | 3.9+ |
+| Flutter | 3.x stable |
+| Dart | 3.10+ |
 | Android Studio | Giraffe or later |
 | Java | 17+ |
 | Android | minSdk 24 (Android 7.0)+ |
@@ -121,69 +126,74 @@ lib/
    flutter pub get
    ```
 
-3. **Run the app (Zero-Config Development)**
-   The app includes pre-configured production fallbacks in code so you can run immediately:
+3. **Run the app (zero-config development)**
+   The app includes production fallback endpoints for a basic run:
    ```bash
    flutter run
    ```
-   Or press **F5** in VS Code to use the pre-configured `CineTrekker (Development)` launch profile.
+   Or press **F5** in VS Code to use the `CineTrekker (Development)` launch profile.
 
 4. **Optional: Custom Environment Overrides**
    To point to your own Supabase instance or staging backend:
    ```bash
    cp .env.example .env
-   # Edit .env with your custom credentials
+   # Edit .env with your own configuration
    flutter run --dart-define-from-file=.env
    ```
 
 ### Building a Release APK
 
+For local signing, configure `android/key.properties` and the keystore as described in the Android Gradle signing configuration. Then:
+
 ```bash
-flutter build apk --release \
-  --obfuscate \
+flutter pub get
+flutter build apk --release --obfuscate \
   --split-debug-info=build/debug-info \
   --dart-define-from-file=.env
 ```
 
-The signed APK will be at `build/app/outputs/flutter-apk/app-release.apk`.
-
-> Release builds require `android/key.properties` and enable R8 minify + resource shrinking.
+The APK will be at `build/app/outputs/flutter-apk/app-release.apk`. The repository's automated release workflow also requires configured GitHub Actions secrets for signing and production dart-defines; see [`.github/workflows/release.yml`](.github/workflows/release.yml).
 
 ---
 
 ## 🔐 Environment Variables
 
-| Variable | Description | Required |
+| Variable | Description | Required for custom config |
 |---|---|---|
 | `CINETREKKER_SUPABASE_URL` | Your Supabase project URL | ✅ |
 | `CINETREKKER_SUPABASE_ANON_KEY` | Your Supabase anonymous key | ✅ |
 | `CINETREKKER_API_BASE_URL` | Base URL for the CineTrekker backend / TMDB proxy | ✅ |
-| `CINETREKKER_SENTRY_DSN` | Sentry DSN for production crash reporting | optional |
+| `CINETREKKER_SENTRY_DSN` | Sentry DSN for crash reporting | optional |
 
-> **Caution:** Never commit your `.env` file. It is listed in `.gitignore`. Use `.env.example` as a reference template only.  
-> Prefer GitHub Actions secrets named with the `CINETREKKER_` prefix (legacy unprefixed names are still accepted as fallbacks in CI).
+> Never commit your `.env` file. It is listed in `.gitignore`. Use [`.env.example`](.env.example) as a reference. GitHub Actions accepts `CINETREKKER_`-prefixed secrets and legacy unprefixed fallbacks.
 
 ### Backend security (RLS)
 
-Client-side filters are **not** authorization. Apply and verify Supabase Row Level Security before release — see [`docs/supabase_rls.md`](docs/supabase_rls.md).
+Client-side filters are **not** authorization. Apply and verify Supabase Row Level Security before release. See [`docs/supabase_rls.md`](docs/supabase_rls.md) and [`docs/supabase_rls_apply.sql`](docs/supabase_rls_apply.sql). Review the SQL against the live schema before applying it.
+
+---
+
+## 🔔 Episode Notifications
+
+Native scheduled episode notifications are enabled from the app's reminder controls in Settings. Users can configure the lead time and delivery hour, enable quiet hours, and test delivery. Android 13 and later require notification permission. Android exact-alarm restrictions and device battery settings can affect delivery; check Android app permissions if alarms are delayed or suppressed. Tapping a notification opens its TV show in the app.
 
 ---
 
 ## 🔁 CI / CD
 
-This repository uses GitHub Actions for continuous integration and automated releases:
-
 | Workflow | Trigger | Description |
 |---|---|---|
 | [CI](.github/workflows/ci.yml) | Push / PR to `main` | Runs `flutter analyze` and `flutter test` |
-| [Release](.github/workflows/release.yml) | Push tag `v*` | Builds obfuscated APK + AAB with `--dart-define-from-file`, creates GitHub Release |
+| [Release](.github/workflows/release.yml) | Push tag `v*` | Builds obfuscated APK + AAB and creates a GitHub Release |
 
-To publish a new release:
+To publish the next version, update `pubspec.yaml`, `lib/core/constants/app_constants.dart`, and `CHANGELOG.md`, then create and push a new version tag that targets the release commit:
+
 ```bash
-git tag v1.2.0
-git push origin v1.2.0
+git tag v1.1.6
+git push origin v1.1.6
 ```
-The Release workflow will automatically build and attach the APK to a GitHub Release.
+
+The release workflow requires its documented GitHub Actions signing and backend secrets; it creates the release and uploads the APK and AAB. Verify CI and the release workflow before sharing the links.
 
 ---
 
@@ -192,12 +202,14 @@ The Release workflow will automatically build and attach the APK to a GitHub Rel
 | File | Purpose |
 |---|---|
 | `lib/main.dart` | App entry point, crash boundary, Riverpod + Sentry setup |
-| `lib/app.dart` | MaterialApp, GoRouter, theme wiring |
+| `lib/app.dart` | MaterialApp, GoRouter, theme wiring and notification tap handling |
 | `lib/core/auth/auth_controller.dart` | OAuth 2.0 PKCE session management |
 | `lib/core/auth/oauth_callback_host.dart` | Deep link + shortcut routing |
 | `lib/core/api/tmdb_api_service.dart` | TMDB REST client with caching |
 | `lib/core/api/supabase_rest_api.dart` | Supabase backend client + 401 refresh |
-| `android/app/src/main/AndroidManifest.xml` | Manifest, permissions, deep links |
+| `lib/core/notifications/local_notification_service.dart` | Native OS notification initialization, scheduling, permissions, and tap payloads |
+| `lib/core/reminders/episode_reminder_controller.dart` | Reminder preferences and native notification sync |
+| `android/app/src/main/AndroidManifest.xml` | Manifest, notification permissions/receivers, and deep links |
 | `android/app/src/main/res/xml/shortcuts.xml` | Static launcher shortcuts |
 | `docs/supabase_rls.md` | Required RLS policy checklist |
 | `.github/workflows/ci.yml` | CI pipeline |
@@ -214,7 +226,7 @@ The Release workflow will automatically build and attach the APK to a GitHub Rel
 ## 📄 License
 
 This project is proprietary software. All rights reserved.
-© 2025 Mohamed Jebahi. Unauthorized copying, modification, or distribution is prohibited.
+© 2026 Mohamed Jebahi. Unauthorized copying, modification, or distribution is prohibited.
 
 ---
 
@@ -223,6 +235,7 @@ This project is proprietary software. All rights reserved.
 - Movie and TV data provided by [The Movie Database (TMDB)](https://www.themoviedb.org). _This product uses the TMDB API but is not endorsed or certified by TMDB._
 - Streaming provider data via [JustWatch](https://www.justwatch.com).
 - Backend powered by [Supabase](https://supabase.com).
+- Notification scheduling powered by [`flutter_local_notifications`](https://pub.dev/packages/flutter_local_notifications).
 
 ---
 
