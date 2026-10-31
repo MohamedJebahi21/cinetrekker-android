@@ -7,6 +7,10 @@
 **Latest GitHub release:** [CineTrekker v1.1.5](https://github.com/MohamedJebahi21/cinetrekker-android/releases/tag/v1.1.5) (historical store-preparation notes below refer to older source state)  
 **Canonical privacy policy:** [https://cinetrekker.vercel.app/privacy](https://cinetrekker.vercel.app/privacy)
 
+## Agent handoff update (2026-10-31)
+
+The last verified public release remains v1.1.5. A local v1.1.6 feature draft includes share-card/export/deletion UI changes; it is not release evidence. Before making a new QA or Play declaration, verify the code and the actual CI/release run. Current deletion controls do not delete the Supabase Auth identity. Test Android notification behavior, timezone/boot handling, native sharing, export contents, and deletion behavior on devices; no physical-device result is implied by CI.
+
 ## Latest GitHub build
 
 - Release page: https://github.com/MohamedJebahi21/cinetrekker-android/releases/tag/v1.1.5

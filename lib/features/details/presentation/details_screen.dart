@@ -1,9 +1,7 @@
 import 'dart:math' as math;
-import 'dart:ui' as ui;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -25,6 +23,9 @@ import '../../tv_tracking/presentation/tv_tracking_controller.dart';
 import '../../watchlist/presentation/watchlist_controller.dart';
 import '../../../core/accessibility/app_semantics.dart';
 import '../../../shared/widgets/skeleton_loaders.dart';
+import 'package:share_plus/share_plus.dart';
+
+import '../../../shared/widgets/cinematic_share_card_dialog.dart';
 import 'details_controller.dart';
 import 'ratings_badges.dart';
 
@@ -151,7 +152,20 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> {
                     ),
                     onPressed: () {
                       if (state.details != null) {
-                        _showShareModal(context, state.details!, widget.mediaType);
+                        final watchedItem = ref
+                            .watch(watchlistControllerProvider)
+                            .watched
+                            .where((item) =>
+                                item.mediaId == widget.mediaId &&
+                                item.mediaType == widget.mediaType)
+                            .firstOrNull;
+                        _showShareModal(
+                          context,
+                          state.details!,
+                          widget.mediaType,
+                          userRating: watchedItem?.rating,
+                          userReview: watchedItem?.note,
+                        );
                       }
                     },
                   ),
@@ -1439,8 +1453,19 @@ class _ActionBar extends ConsumerWidget {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text('Marked "${details.displayTitle}" as watched${rating > 0 ? ' (${rating.toStringAsFixed(1)} ★)' : ''}'),
-                            duration: const Duration(seconds: 2),
+                            duration: const Duration(seconds: 4),
                             behavior: SnackBarBehavior.floating,
+                            action: SnackBarAction(
+                              label: 'Story Card',
+                              onPressed: () {
+                                _openStoryCardDialog(
+                                  context,
+                                  details,
+                                  mediaType,
+                                  userRating: rating > 0 ? rating : null,
+                                );
+                              },
+                            ),
                           ),
                         );
                       }
@@ -2523,8 +2548,10 @@ class _Backdrop extends StatelessWidget {
 void _showShareModal(
   BuildContext context,
   TmdbMediaDetails details,
-  String mediaType,
-) {
+  String mediaType, {
+  double? userRating,
+  String? userReview,
+}) {
   Haptics.buttonTap();
   final theme = Theme.of(context);
   final isDark = theme.brightness == Brightness.dark;
@@ -2619,9 +2646,8 @@ void _showShareModal(
                           colors: [
                             Colors.black.withValues(alpha: 0.35),
                             Colors.black.withValues(alpha: 0.85),
-                            Colors.black.withValues(alpha: 0.95),
                           ],
-                          stops: const [0.0, 0.6, 1.0],
+                          stops: const [0.3, 1.0],
                         ),
                       ),
                     ),
@@ -2632,11 +2658,14 @@ void _showShareModal(
                         children: [
                           if (details.posterPath != null)
                             Container(
-                              width: 76,
-                              height: 114,
+                              width: 60,
+                              height: 90,
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: Colors.white24),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.3),
+                                  width: 1,
+                                ),
                                 boxShadow: const [
                                   BoxShadow(
                                     color: Colors.black54,
@@ -2669,17 +2698,19 @@ void _showShareModal(
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
-                                      vote,
+                                      userRating != null && userRating > 0
+                                          ? '${userRating.toStringAsFixed(1)} (My Rating)'
+                                          : vote,
                                       style: GoogleFonts.spaceGrotesk(
                                         fontSize: 15,
                                         fontWeight: FontWeight.w700,
-                                        color: Colors.white,
+                                        color: const Color(0xFFFFB800),
                                       ),
                                     ),
                                     if (year.isNotEmpty) ...[
                                       const SizedBox(width: 8),
                                       Text(
-                                        '•  $year',
+                                        '• $year',
                                         style: GoogleFonts.dmSans(
                                           fontSize: 13,
                                           color: Colors.white70,
@@ -2694,9 +2725,8 @@ void _showShareModal(
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                   style: GoogleFonts.spaceGrotesk(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: -0.3,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
                                     color: Colors.white,
                                   ),
                                 ),
@@ -2765,17 +2795,10 @@ void _showShareModal(
                   child: OutlinedButton.icon(
                     onPressed: () async {
                       Haptics.buttonTap();
-                      final text = Uri.encodeComponent(
-                        'Watching "$title" on CineTrekker! $url',
-                      );
-                      final waUrl = Uri.parse('https://wa.me/?text=$text');
+                      final text = 'Watching "$title" on CineTrekker! $url';
                       try {
-                        await launchUrl(
-                          waUrl,
-                          mode: LaunchMode.externalApplication,
-                        );
+                        await Share.share(text, subject: title);
                       } catch (_) {
-                        // Fallback: copy link to clipboard when share app unavailable
                         await Clipboard.setData(
                           ClipboardData(text: '$title: $url'),
                         );
@@ -2790,7 +2813,7 @@ void _showShareModal(
                       }
                     },
                     icon: const Icon(Icons.share_rounded, size: 18),
-                    label: const Text('Share Link'),
+                    label: const Text('Share'),
                     style: OutlinedButton.styleFrom(
                       minimumSize: const Size(0, 46),
                       shape: RoundedRectangleBorder(
@@ -2807,7 +2830,13 @@ void _showShareModal(
               child: FilledButton.tonalIcon(
                 onPressed: () {
                   Navigator.pop(ctx);
-                  _openStoryCardDialog(context, details, mediaType);
+                  _openStoryCardDialog(
+                    context,
+                    details,
+                    mediaType,
+                    userRating: userRating,
+                    userReview: userReview,
+                  );
                 },
                 icon: const Icon(Icons.photo_library_outlined, size: 18),
                 label: const Text('Export 9:16 Story Card'),
@@ -2829,341 +2858,28 @@ void _showShareModal(
 void _openStoryCardDialog(
   BuildContext context,
   TmdbMediaDetails details,
-  String mediaType,
-) {
+  String mediaType, {
+  double? userRating,
+  String? userReview,
+}) {
   Haptics.buttonTap();
-  showDialog<void>(
-    context: context,
-    builder: (ctx) => _StoryCardDialog(
-      details: details,
-      mediaType: mediaType,
-    ),
+  final year = (details.releaseDate?.isNotEmpty ?? false)
+      ? details.releaseDate!.split('-').first
+      : (details.firstAirDate?.isNotEmpty ?? false)
+          ? details.firstAirDate!.split('-').first
+          : null;
+
+  CinematicShareCardDialog.show(
+    context,
+    mediaId: details.id,
+    mediaType: mediaType,
+    title: details.displayTitle,
+    posterPath: details.posterPath,
+    backdropPath: details.backdropPath,
+    voteAverage: details.voteAverage > 0 ? details.voteAverage : null,
+    releaseYear: year,
+    genres: details.genres.map((g) => g.name).toList(),
+    userRating: userRating,
+    userReview: userReview,
   );
-}
-
-class _StoryCardDialog extends StatefulWidget {
-  const _StoryCardDialog({
-    required this.details,
-    required this.mediaType,
-  });
-
-  final TmdbMediaDetails details;
-  final String mediaType;
-
-  @override
-  State<_StoryCardDialog> createState() => _StoryCardDialogState();
-}
-
-class _StoryCardDialogState extends State<_StoryCardDialog> {
-  final GlobalKey _repaintKey = GlobalKey();
-  bool _isCapturing = false;
-
-  Future<void> _shareCard() async {
-    Haptics.buttonTap();
-    setState(() => _isCapturing = true);
-
-    try {
-      final boundary =
-          _repaintKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
-      if (boundary != null) {
-        // Capture boundary as image
-        final image = await boundary.toImage(pixelRatio: 2.0);
-        final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-        if (byteData != null) {
-          debugPrint('StoryCard: Captured ${byteData.lengthInBytes} bytes');
-        }
-      }
-    } catch (e) {
-      debugPrint('StoryCard capture error: $e');
-    }
-
-    if (mounted) {
-      setState(() => _isCapturing = false);
-      Haptics.success();
-      final url =
-          'https://cinetrekker.vercel.app/${widget.mediaType}/${widget.details.id}';
-      await Clipboard.setData(
-        ClipboardData(
-          text:
-              'Check out "${widget.details.displayTitle}" on CineTrekker! $url',
-        ),
-      );
-      if (!mounted) return;
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Story card saved! Share link copied to clipboard.'),
-          behavior: SnackBarBehavior.floating,
-          duration: Duration(seconds: 3),
-        ),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final details = widget.details;
-    final vote = details.voteAverage.toStringAsFixed(1);
-    final year = (details.releaseDate?.isNotEmpty ?? false)
-        ? details.releaseDate!.split('-').first
-        : (details.firstAirDate?.isNotEmpty ?? false)
-            ? details.firstAirDate!.split('-').first
-            : '';
-    final genres = details.genres.map((g) => g.name).take(3).join(' • ');
-
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // 9:16 Card
-          RepaintBoundary(
-            key: _repaintKey,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(24),
-              child: Container(
-                width: 280,
-                height: 498, // 9:16 aspect ratio
-                decoration: BoxDecoration(
-                  color: Colors.black,
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.15),
-                    width: 1.5,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.6),
-                      blurRadius: 24,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    // Backdrop image
-                    if (details.backdropPath != null)
-                      AppCachedImage(
-                        imageUrl:
-                            'https://image.tmdb.org/t/p/w780${details.backdropPath}',
-                        fit: BoxFit.cover,
-                      )
-                    else
-                      Container(color: const Color(0xFF141414)),
-
-                    // Dark cinematic gradient overlay
-                    DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.black.withValues(alpha: 0.5),
-                            Colors.black.withValues(alpha: 0.85),
-                            Colors.black.withValues(alpha: 0.98),
-                          ],
-                          stops: const [0.0, 0.55, 1.0],
-                        ),
-                      ),
-                    ),
-
-                    // Content
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 24,
-                      ),
-                      child: Column(
-                        children: [
-                          // Header CineTrekker watermark
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(5),
-                                child: Image.asset(
-                                  'assets/images/logo.png',
-                                  width: 18,
-                                  height: 18,
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'CineTrekker',
-                                style: GoogleFonts.spaceGrotesk(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 1.0,
-                                  color: theme.colorScheme.primary,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const Spacer(),
-
-                          // Poster Card
-                          if (details.posterPath != null)
-                            Container(
-                              width: 120,
-                              height: 180,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.3),
-                                  width: 1.5,
-                                ),
-                                boxShadow: const [
-                                  BoxShadow(
-                                    color: Colors.black87,
-                                    blurRadius: 16,
-                                    offset: Offset(0, 8),
-                                  ),
-                                ],
-                              ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(13),
-                                child: AppCachedImage(
-                                  imageUrl:
-                                      'https://image.tmdb.org/t/p/w342${details.posterPath}',
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                            ),
-                          const SizedBox(height: 16),
-
-                          // Rating Pill
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFFB800).withValues(alpha: 0.18),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: const Color(0xFFFFB800).withValues(alpha: 0.5),
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.star_rounded,
-                                  color: Color(0xFFFFB800),
-                                  size: 16,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  vote,
-                                  style: GoogleFonts.spaceGrotesk(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                                if (year.isNotEmpty) ...[
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    '•  $year',
-                                    style: GoogleFonts.dmSans(
-                                      fontSize: 12,
-                                      color: Colors.white70,
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-
-                          // Title
-                          Text(
-                            details.displayTitle,
-                            textAlign: TextAlign.center,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.spaceGrotesk(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: -0.3,
-                              color: Colors.white,
-                              height: 1.2,
-                            ),
-                          ),
-                          if (genres.isNotEmpty) ...[
-                            const SizedBox(height: 6),
-                            Text(
-                              genres,
-                              textAlign: TextAlign.center,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.dmSans(
-                                fontSize: 11,
-                                color: Colors.white60,
-                              ),
-                            ),
-                          ],
-                          const Spacer(),
-
-                          // Bottom Tagline
-                          Text(
-                            'Share your cinematic journey',
-                            style: GoogleFonts.dmSans(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.white38,
-                              letterSpacing: 0.3,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Actions Row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconButton(
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.close_rounded, color: Colors.white70),
-                tooltip: 'Close',
-              ),
-              const SizedBox(width: 12),
-              FilledButton.icon(
-                onPressed: _isCapturing ? null : _shareCard,
-                icon: _isCapturing
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.share_rounded, size: 18),
-                label: const Text('Share Story Card'),
-                style: FilledButton.styleFrom(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
 }

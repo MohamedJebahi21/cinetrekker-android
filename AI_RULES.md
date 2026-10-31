@@ -71,7 +71,7 @@ Before creating any new widget, service, helper, provider, or abstraction:
 - Secrets and API keys must NEVER be hardcoded, logged, or checked into version control.
 - Configuration is provided at build/run time via `--dart-define` / `--dart-define-from-file=.env` via `lib/core/constants/environment.dart`.
 - The Android client talks to TMDB strictly through the server-side proxy `/api/tmdb-proxy` on `Environment.apiBaseUrl` so that TMDB API keys remain unexposed.
-- Supabase access uses the anonymous key + OAuth 2.0 PKCE user access token. Row Level Security (RLS) policies defined in `docs/supabase_rls.md` must be respected. Never rely on client-side authorization for sensitive data.
+- Supabase access uses the anonymous key + OAuth 2.0 PKCE user access token. Row Level Security (RLS) policies defined in `docs/supabase_rls.md` must be respected. Never rely on client-side authorization for sensitive data. Do not describe profile/table deletion plus sign-out as Supabase Auth identity deletion; verify a secured server-side identity deletion path before promising full account erasure.
 
 ## 9. UI & Design System Guidelines
 - Design system follows **Material You** with editorial cinema aesthetics: signature CineTrekker red accent (`#E50914`), deep neutral surfaces, and AMOLED true black (`#000000`).
@@ -92,7 +92,7 @@ Before creating any new widget, service, helper, provider, or abstraction:
 ## 10. Verification & Quality Gates
 Before declaring any task complete:
 - Run `flutter analyze` — Must report **0 errors, 0 warnings**.
-- Run `flutter test` — All 22 tests must pass.
+- Run `flutter test` — All repository tests must pass; never hardcode a test-count expectation in these instructions.
 - Verify release/build integrity when touching native Android configurations (`flutter build apk --release`).
 
 ## 11. Self-Maintaining Documentation Protocol

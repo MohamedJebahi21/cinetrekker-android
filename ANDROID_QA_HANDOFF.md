@@ -3,6 +3,10 @@
 > **Historical handoff:** This document describes an earlier build and contains superseded local artifact paths, version numbers, and/or test results. The current published release is [CineTrekker v1.1.5](https://github.com/MohamedJebahi21/cinetrekker-android/releases/tag/v1.1.5). For current install/download links, use the [README](README.md); for v1.1.5 release details and checksums, use the [release page](https://github.com/MohamedJebahi21/cinetrekker-android/releases/tag/v1.1.5). Do not rely on historical local build hashes or status statements as evidence for v1.1.5.
 
 
+## Agent handoff update (2026-10-31)
+
+The last verified public release remains v1.1.5. A local v1.1.6 feature draft includes share-card/export/deletion UI changes; it is not release evidence. Before making a new QA or Play declaration, verify the code and the actual CI/release run. Current deletion controls do not delete the Supabase Auth identity. Test Android notification behavior, timezone/boot handling, native sharing, export contents, and deletion behavior on devices; no physical-device result is implied by CI.
+
 ## Current published release: v1.1.5
 
 - Release page: https://github.com/MohamedJebahi21/cinetrekker-android/releases/tag/v1.1.5

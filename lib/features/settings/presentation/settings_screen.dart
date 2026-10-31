@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/accessibility/text_scale_controller.dart';
 import '../../../core/auth/auth_controller.dart';
@@ -14,6 +15,8 @@ import '../../../core/motion/haptic_service.dart';
 import '../../../core/reminders/episode_reminder_controller.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/export/data_export_service.dart';
+import '../../../core/notifications/local_notification_service.dart';
 import '../../../core/updates/app_update_controller.dart';
 import '../../../core/updates/app_update_modal.dart';
 import '../../collections/data/collections_repository.dart';
@@ -174,142 +177,262 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       final themeStyle = ref.read(themeControllerProvider);
       final textScaleStyle = ref.read(textScaleControllerProvider);
       final fontSizeScale = ref.read(fontSizeScaleControllerProvider);
+      final libraryRepo = ref.read(userLibraryRepositoryProvider);
       final payload = await _buildExportPayload(
         themeMode: themeStyle.name,
         textScaleMode: textScaleStyle.name,
         fontSizeScale: fontSizeScale,
       );
       final jsonString = const JsonEncoder.withIndent('  ').convert(payload);
+      final watched = await libraryRepo.getWatched();
+      final watchlist = await libraryRepo.getWatchlist();
+      if (!mounted) return;
 
-      if (!mounted) {
-        return;
-      }
-
-      final scaffoldMessenger = ScaffoldMessenger.of(this.context);
-
-      await showDialog<void>(
+      final theme = Theme.of(context);
+      const exportService = DataExportService();
+      await showModalBottomSheet<void>(
         context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: Text(
-              'Export data',
-              style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w700),
-            ),
-            content: SizedBox(
-              width: double.maxFinite,
-              child: SingleChildScrollView(
-                child: SelectableText(
-                  jsonString,
-                  style: GoogleFonts.dmSans(fontSize: 12),
+        isScrollControlled: true,
+        backgroundColor: theme.colorScheme.surface,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        builder: (sheetCtx) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
                 ),
+                const SizedBox(height: 16),
+                Text(
+                  'Export & Backup Library',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Save a copy of your CineTrekker data or move it to another service.',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 13,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                _exportOptionCard(
+                  theme: theme,
+                  icon: Icons.data_object_rounded,
+                  title: 'JSON full backup',
+                  description: 'A readable snapshot of your profile, library, TV progress, collections and settings.',
+                  action: FilledButton.icon(
+                    onPressed: () async {
+                      Navigator.pop(sheetCtx);
+                      try {
+                        await exportService.exportAndShareJson(payload: payload);
+                      } catch (error) {
+                        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('JSON export failed: $error')),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.share_rounded, size: 16),
+                    label: const Text('Share or save'),
+                  ),
+                  trailing: TextButton.icon(
+                    onPressed: () async {
+                      await Clipboard.setData(ClipboardData(text: jsonString));
+                      if (sheetCtx.mounted) Navigator.pop(sheetCtx);
+                      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('JSON copied to clipboard.')),
+                      );
+                    },
+                    icon: const Icon(Icons.copy_rounded, size: 16),
+                    label: const Text('Copy'),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _exportOptionCard(
+                  theme: theme,
+                  icon: Icons.table_chart_rounded,
+                  title: 'CSV library export',
+                  description: 'Separate watched and watchlist CSV files. Includes ${watched.length} watched and ${watchlist.length} watchlist entries.',
+                  action: FilledButton.icon(
+                    onPressed: () async {
+                      Navigator.pop(sheetCtx);
+                      try {
+                        await exportService.exportAndShareLetterboxdCsv(
+                          watched: watched,
+                          watchlist: watchlist,
+                        );
+                      } catch (error) {
+                        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('CSV export failed: $error')),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.ios_share_rounded, size: 16),
+                    label: const Text('Export CSV'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not generate export: $error')),
+      );
+    } finally {
+      if (mounted) setState(() => _isExportingData = false);
+    }
+  }
+
+  Widget _exportOptionCard({
+    required ThemeData theme,
+    required IconData icon,
+    required String title,
+    required String description,
+    required Widget action,
+    Widget? trailing,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Icon(icon, color: theme.colorScheme.primary, size: 21),
+            const SizedBox(width: 9),
+            Expanded(child: Text(title, style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w700))),
+          ]),
+          const SizedBox(height: 5),
+          Text(description, style: GoogleFonts.dmSans(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
+          const SizedBox(height: 10),
+          Wrap(spacing: 8, runSpacing: 4, children: [action, if (trailing != null) trailing]),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showDeleteAccountConfirmationDialog() async {
+    final session = ref.read(authControllerProvider).valueOrNull;
+    final isGuest = session == null;
+    final theme = Theme.of(context);
+    var confirmationInput = '';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final canDelete = isGuest || confirmationInput.trim().toUpperCase() == 'DELETE';
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Text(isGuest ? 'Clear local data?' : 'Delete account data?',
+              style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w700)),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(isGuest
+                    ? 'This clears locally stored library data and preferences on this device.'
+                    : 'This permanently deletes your CineTrekker profile and associated library/social records, then signs you out. This does not delete your Supabase sign-in identity.',
+                    style: GoogleFonts.dmSans(fontSize: 13)),
+                  if (!isGuest) ...[
+                    const SizedBox(height: 12),
+                    _deletionBullet('Profile and personal library data'),
+                    _deletionBullet('Collections and TV tracking records'),
+                    _deletionBullet('Comments, likes and social relationships'),
+                    const SizedBox(height: 16),
+                    Text('Type DELETE to confirm:', style: GoogleFonts.dmSans(
+                      fontWeight: FontWeight.w700, color: theme.colorScheme.error)),
+                    const SizedBox(height: 8),
+                    TextField(
+                      autofocus: true,
+                      decoration: const InputDecoration(hintText: 'DELETE', border: OutlineInputBorder()),
+                      onChanged: (value) => setDialogState(() => confirmationInput = value),
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  InkWell(
+                    onTap: () => launchUrl(Uri.parse('https://cinetrekker.vercel.app/privacy'), mode: LaunchMode.externalApplication),
+                    child: Text('For help deleting your sign-in account, see the privacy policy and contact options.',
+                      style: GoogleFonts.dmSans(fontSize: 12, color: theme.colorScheme.primary, decoration: TextDecoration.underline)),
+                  ),
+                ],
               ),
             ),
             actions: [
-              TextButton(
-                onPressed: () async {
-                  await Clipboard.setData(ClipboardData(text: jsonString));
-                  if (mounted) {
-                    scaffoldMessenger.showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          'Export copied to clipboard.',
-                          style: GoogleFonts.dmSans(),
-                        ),
-                      ),
-                    );
-                  }
-                },
-                child: Text(
-                  'Copy JSON',
-                  style: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
-                ),
-              ),
+              TextButton(onPressed: () => Navigator.pop(dialogCtx, false), child: const Text('Cancel')),
               FilledButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text(
-                  'Close',
-                  style: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
-                ),
+                onPressed: canDelete ? () => Navigator.pop(dialogCtx, true) : null,
+                style: FilledButton.styleFrom(backgroundColor: theme.colorScheme.error),
+                child: Text(isGuest ? 'Clear device' : 'Delete app data'),
               ),
             ],
           );
         },
-      );
-    } catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Could not generate export: $error',
-              style: GoogleFonts.dmSans(),
-            ),
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isExportingData = false);
-      }
-    }
+      ),
+    );
+    if (confirmed == true && mounted) await _deleteAccountData();
   }
+
+  Widget _deletionBullet(String text) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 2),
+    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const Text('• '), Expanded(child: Text(text, style: GoogleFonts.dmSans(fontSize: 12))),
+    ]),
+  );
 
   Future<void> _deleteAccountData() async {
     setState(() => _isDeletingData = true);
     try {
-      final authState = ref.read(authControllerProvider);
-      final session = authState.valueOrNull;
+      final session = ref.read(authControllerProvider).valueOrNull;
       final libraryRepo = ref.read(userLibraryRepositoryProvider);
-      final profileRepo = ref.read(profileRepositoryProvider);
-      final collectionsRepo = ref.read(collectionsRepositoryProvider);
-      final socialRepo = ref.read(socialRepositoryProvider);
-      final safetyNotifier = ref.read(contentSafetyControllerProvider.notifier);
-
       await libraryRepo.clearLocalData();
-      await safetyNotifier.clearPreferences();
-
+      await ref.read(contentSafetyControllerProvider.notifier).clearPreferences();
+      try {
+        await LocalNotificationService.instance.cancelAllReminders();
+      } catch (_) {}
       if (session != null) {
+        final profileRepo = ref.read(profileRepositoryProvider);
         await Future.wait<void>([
           profileRepo?.deleteProfile() ?? Future<void>.value(),
-          collectionsRepo.deleteAccountData(),
-          socialRepo.deleteAccountData(),
+          ref.read(collectionsRepositoryProvider).deleteAccountData(),
+          ref.read(socialRepositoryProvider).deleteAccountData(),
           libraryRepo.deleteAccountData(),
         ]);
         await ref.read(authControllerProvider.notifier).signOut();
       }
-
-      if (!mounted) {
-        return;
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            session == null
-                ? 'This device data was cleared.'
-                : 'Your account data was deleted.',
-            style: GoogleFonts.dmSans(),
-          ),
-        ),
-      );
-
-      if (session != null) {
-        context.go('/auth');
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(session == null ? 'Local device data cleared.' : 'Your CineTrekker app data was deleted. Sign-in account remains active.'),
+      ));
+      if (session != null) context.go('/auth');
     } catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Deletion failed: $error',
-              style: GoogleFonts.dmSans(),
-            ),
-          ),
-        );
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Deletion failed: $error')),
+      );
     } finally {
-      if (mounted) {
-        setState(() => _isDeletingData = false);
-      }
+      if (mounted) setState(() => _isDeletingData = false);
     }
   }
 
@@ -1411,67 +1534,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 const SizedBox(height: 12),
                 FilledButton.icon(
-                  onPressed: _isDeletingData
-                      ? null
-                      : () async {
-                          final confirmed = await showDialog<bool>(
-                            context: context,
-                            builder: (ctx) => AlertDialog(
-                              title: Text(
-                                'Are you sure?',
-                                style: GoogleFonts.spaceGrotesk(
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              content: Text(
-                                'This permanently removes your profile, watchlist, watch history, and data. This cannot be undone.',
-                                style: GoogleFonts.dmSans(),
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.of(ctx).pop(false),
-                                  child: Text(
-                                    'Cancel',
-                                    style: GoogleFonts.dmSans(),
-                                  ),
-                                ),
-                                FilledButton(
-                                  onPressed: () => Navigator.of(ctx).pop(true),
-                                  style: FilledButton.styleFrom(
-                                    backgroundColor: theme.colorScheme.error,
-                                  ),
-                                  child: Text(
-                                    'Delete',
-                                    style: GoogleFonts.dmSans(),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                          if (confirmed == true && mounted) {
-                            await _deleteAccountData();
-                          }
-                        },
+                  onPressed: _isDeletingData ? null : _showDeleteAccountConfirmationDialog,
                   style: FilledButton.styleFrom(
-                    backgroundColor: theme.colorScheme.error.withValues(
-                      alpha: 0.12,
-                    ),
+                    backgroundColor: theme.colorScheme.error.withValues(alpha: 0.12),
                     foregroundColor: theme.colorScheme.error,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(
-                        color: theme.colorScheme.error.withValues(alpha: 0.3),
-                      ),
+                      side: BorderSide(color: theme.colorScheme.error.withValues(alpha: 0.3)),
                     ),
                   ),
                   icon: _isDeletingData
-                      ? const SizedBox(
-                          height: 16,
-                          width: 16,
-                          child: CircularProgressIndicator.adaptive(
-                            strokeWidth: 2,
-                          ),
-                        )
+                      ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator.adaptive(strokeWidth: 2))
                       : const Icon(Icons.delete_outline_rounded, size: 18),
                   label: Text(
                     ref.watch(authControllerProvider).valueOrNull == null
@@ -1479,6 +1552,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         : 'Delete account data',
                     style: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
                   ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Deleting app data signs you out but does not remove your sign-in identity. Use the privacy-policy contact path to request sign-in identity deletion.',
+                  style: GoogleFonts.dmSans(fontSize: 11, color: theme.colorScheme.onSurfaceVariant),
                 ),
               ],
             ),

@@ -1,5 +1,17 @@
 # CineTrekker Android — Engineering Changelog
 
+## Unreleased — v1.1.6 draft (2026-10-31; not published)
+
+### Added / changed in the local working tree
+- Added cinematic 9:16 PNG share-card flow and native text/link sharing from media details.
+- Added JSON snapshot sharing/copy and watched/watchlist CSV export from Settings. CSVs use RFC-4180 escaping; import compatibility with other products is not verified.
+- Added clearer app-data deletion confirmation and local reminder cancellation. The Android client deletes app-associated rows and signs out, but does **not** delete the Supabase Auth identity. Full identity deletion remains a server-side/product requirement.
+
+### Verification status
+- These changes are local, uncommitted, and not verified by Flutter analysis, tests, Android build, physical-device QA, or GitHub Actions. No v1.1.6 tag/release or APK/AAB link exists yet.
+
+---
+
 ## 2026-10-19 — Release v1.1.5: Native OS Episode Notifications, Android 13+ Permissions & Exact Alarms
 
 ### Added

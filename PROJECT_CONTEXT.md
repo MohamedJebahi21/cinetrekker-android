@@ -11,7 +11,8 @@
   - Rich cinephile analytics (ratings distribution, watch time, 6-month viewing timeline, rank progression).
   - Offline-first reliability with optimistic local mutations and automated remote sync.
   - Flagship Android ergonomics: Material You styling, AMOLED pure black, haptic feedback, custom typography scaling, and TalkBack accessibility.
-- **Current Status**: **Production Release v1.1.5 (Build 8)**. GitHub Release and APK/AAB assets were verified on 2026-10-19. Current release: [v1.1.5](https://github.com/MohamedJebahi21/cinetrekker-android/releases/tag/v1.1.5); latest: [GitHub Releases](https://github.com/MohamedJebahi21/cinetrekker-android/releases/latest). CI run #49 passed analysis and 62 tests.
+- **Published status**: v1.1.5 (Build 8) is the last release verified in repository history; [release](https://github.com/MohamedJebahi21/cinetrekker-android/releases/tag/v1.1.5), [latest releases](https://github.com/MohamedJebahi21/cinetrekker-android/releases/latest).
+- **Working tree status (2026-10-31)**: an unreleased v1.1.6 feature set is being prepared locally. Do not describe it as published, CI-verified, or released until commits and release workflow are confirmed. Local Flutter/Dart/Java tools are unavailable in the current work environment.
 
 ---
 
@@ -200,7 +201,8 @@ All routes in `lib/router/app_router.dart`:
 |---|---|---|---|
 | **Authentication & OAuth** | `lib/core/auth/auth_controller.dart` | `lib/core/auth/auth_session.dart`, `lib/features/auth/presentation/auth_screen.dart` | `test/core/auth/auth_session_test.dart` |
 | **Movie / TV Details Screen**| `lib/features/details/presentation/details_screen.dart` | `lib/features/details/presentation/details_controller.dart`, `lib/core/api/tmdb_api_service.dart` | Manual / Widget verification |
-| **In-App Trailers & Story Cards**| `lib/features/details/presentation/details_screen.dart` | `lib/core/motion/haptic_service.dart`, `lib/core/accessibility/app_semantics.dart` | Manual verification |
+| **Share actions & cinematic story cards** | `lib/features/details/presentation/details_screen.dart` | `lib/shared/widgets/cinematic_share_card_dialog.dart`, `share_plus` | Manual/device verification pending |
+| **Account data export & deletion controls** | `lib/features/settings/presentation/settings_screen.dart` | `lib/core/export/data_export_service.dart`, account repositories | Unit tests for CSV escaping; integration/device verification pending |
 | **Watchlist & Batch Actions**| `lib/features/watchlist/presentation/watchlist_screen.dart` | `lib/features/watchlist/data/user_library_repository.dart`, `lib/core/offline/offline_mutation_queue.dart` | Integration tests |
 | **TV Tracking & Air Reminders**| `lib/features/tv_tracking/presentation/tv_tracking_screen.dart`| `lib/features/tv_tracking/presentation/tv_tracking_controller.dart`, `lib/core/models/media_models.dart` | Integration tests |
 | **Cinephile Analytics & Charts**| `lib/features/parity/presentation/feature_parity_screen.dart` | `lib/features/watchlist/data/user_library_repository.dart` | Manual verification |
@@ -211,3 +213,11 @@ All routes in `lib/router/app_router.dart`:
 | **Supabase REST & RLS** | `lib/core/api/supabase_rest_api.dart` | `docs/supabase_rls.md`, `docs/supabase_rls_apply.sql` | `test/core/api/supabase_rest_api_test.dart` |
 | **Social, Comments & Follows**| `lib/features/social/presentation/social_screen.dart` | `lib/features/social/data/social_repository.dart`, `lib/features/social/presentation/comments_controller.dart` | `test/features/social/social_repository_test.dart` |
 | **In-App User Feedback** | `lib/features/settings/presentation/feedback_screen.dart` | `lib/features/settings/data/feedback_repository.dart` | Manual verification |
+
+
+## 8. Agent handoff: current in-progress features and known boundaries
+
+- **Cinematic share cards (unreleased work)**: details-screen share actions open `CinematicShareCardDialog`; it captures a 9:16 card to PNG and uses the native share sheet. Text/link sharing is also available. Validate image rendering on device, including missing artwork and share cancellation.
+- **Data export (unreleased work)**: Settings builds a JSON snapshot containing account metadata, selected preferences, profile, watchlist, watched items, followed shows, watched episodes, collection metadata, social notifications, favorites, and content-safety settings. It offers file sharing, clipboard JSON, and separate watched/watchlist CSV files. CSV column shape resembles common movie tracking exports but third-party import compatibility is **not verified**; the backup is not a lossless archive of all backend records.
+- **Deletion boundary**: Settings can clear local app data or delete app-owned profile/library/TV/collection/social rows and sign out. Supabase Auth identity deletion is **not implemented** in the Android client. Do not call this full account deletion or claim Play policy compliance. The current in-app copy directs the user to the public privacy policy contact path for identity deletion assistance; verify that external route with the service owner before release.
+- **Verification state**: worktree-only code is uncommitted and unvalidated here. Run `dart format` on changed Dart files, `flutter pub get`, `flutter analyze`, and `flutter test`; then run an Android build and device tests for sharing and deletion, before release.

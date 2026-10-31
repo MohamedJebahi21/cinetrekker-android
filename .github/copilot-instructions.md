@@ -1,5 +1,8 @@
 # GitHub Copilot Instructions — CineTrekker Android
 
+
+> **Current source of truth:** read `AI_RULES.md`, `PROJECT_CONTEXT.md`, `ARCHITECTURE.md`, and `DEFINITION_OF_DONE.md` before non-trivial work. The last verified published release is v1.1.5; any v1.1.6 material in the working tree is unreleased until CI and release assets are verified. Share/export/deletion implementation boundaries and known limitations are documented in `PROJECT_CONTEXT.md` and `ARCHITECTURE.md`. In particular, current app deletion removes app data and signs out but does not delete the Supabase Auth identity.
+
 When generating or refactoring code in this repository:
 
 1. Follow the canonical guidelines defined in **`AI_RULES.md`**.

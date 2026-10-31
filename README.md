@@ -21,7 +21,7 @@
 
 ## ⬇️ Download the latest release
 
-**CineTrekker v1.1.5** includes native episode reminders. Download the APK directly to your Android device:
+**Latest verified GitHub release: CineTrekker v1.1.5** (Build 8), including native episode reminders. Download the APK directly to your Android device:
 
 <div align="center">
 
@@ -54,7 +54,9 @@ To install the APK, allow **Install unknown apps** for your browser or file mana
 | 🔒 **Secure Auth** | OAuth 2.0 (PKCE) via Supabase with session persistence |
 | 📱 **App Shortcuts** | Long-press icon to jump to Search, Trending, Watchlist, or Discover |
 | 🔙 **Predictive Back** | Native Android 14 back gesture animation support |
-| 🎴 **Share Cards** | Cinematic 9:16 share cards for movies and shows |
+| 🎴 **Share Cards** | Cinematic 9:16 story-card PNGs and native link/text sharing (current development changes may be unreleased) |
+| 📤 **Data Export** | JSON backup snapshot and watched/watchlist CSV sharing; third-party CSV import compatibility is not guaranteed |
+| 🧹 **Data deletion controls** | Clear local data or delete app-associated records; the current Android client does not delete the Supabase Auth identity |
 
 ---
 
@@ -186,7 +188,7 @@ Native scheduled episode notifications are enabled from the app's reminder contr
 | [CI](.github/workflows/ci.yml) | Push / PR to `main` | Runs `flutter analyze` and `flutter test` |
 | [Release](.github/workflows/release.yml) | Push tag `v*` | Builds obfuscated APK + AAB and creates a GitHub Release |
 
-To publish the next version, update `pubspec.yaml`, `lib/core/constants/app_constants.dart`, and `CHANGELOG.md`, then create and push a new version tag that targets the release commit:
+To prepare a release, update `pubspec.yaml`, `lib/core/constants/app_constants.dart`, and `CHANGELOG.md`, then create and push a new version tag that targets the release commit. Never describe a local version bump as released until CI and APK/AAB assets are verified:
 
 ```bash
 git tag v1.1.6

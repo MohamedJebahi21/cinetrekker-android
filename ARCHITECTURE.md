@@ -168,3 +168,15 @@ The router in `lib/router/app_router.dart` uses **GoRouter** with a dual navigat
 The episode reminder flow is exposed through `EpisodeReminderController` and `EpisodeReminderService`. Followed-show and preference changes cause the controller to recompute reminders and synchronize them with `LocalNotificationService` (`lib/core/notifications/local_notification_service.dart`). The service initializes the notification channel, checks/requests Android notification permission, and schedules one notification ID per show with a TV route payload. Android manifest receivers restore plugin-managed schedules after reboot or app replacement.
 
 Important operational constraints: scheduling uses exact-while-idle mode and therefore Android exact-alarm/notification permissions and device policy can affect delivery. The timezone database is initialized, but the app does not currently discover and assign the device's IANA timezone; `tz.local` therefore has not been confirmed to match the device. Local-time correctness across non-UTC zones has not been verified. Notification behavior should be device-tested before treating delivery timing or reboot restoration as certified. See [v1.1.5 release notes](https://github.com/MohamedJebahi21/cinetrekker-android/releases/tag/v1.1.5).
+
+
+## 7. Share, export, and data deletion flows (unreleased work)
+
+### Share cards
+`DetailsScreen` launches `CinematicShareCardDialog` with title metadata, artwork, genres, external rating, and optional personal rating/review. The dialog renders a 9:16 `RepaintBoundary`, captures PNG bytes to temporary storage, and hands the file plus a deep-link message to `share_plus`. The image is a generated share artifact, not persisted library data. Validate rendering and native share targets on physical Android devices.
+
+### Export
+Settings assembles a JSON snapshot from existing profile, library, TV tracking, collection, and notification repositories; `DataExportService` writes it to a temporary file and invokes the system share sheet. CSV exports are generated from watched/watchlist rows. They are RFC-4180-escaped CSVs, but import compatibility with Letterboxd, IMDb, or another service is not guaranteed. The export is a snapshot of fields currently read by the app, not a complete database dump.
+
+### Delete app data versus delete identity
+The settings deletion flow calls app repositories to remove the user's profile, library, TV tracking, collection, and social rows, clears app-local caches/preferences and scheduled reminders, then signs out. `AuthController` only exposes sign-out; it has no Supabase Auth admin deletion operation. Therefore the Android flow does not delete the Supabase Auth identity and must be labelled as app-data deletion, not complete account deletion. Full identity deletion requires a separately secured server-side deletion workflow and verified public user-request path.
