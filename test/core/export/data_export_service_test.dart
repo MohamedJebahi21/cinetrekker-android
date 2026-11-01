@@ -80,7 +80,7 @@ void main() {
           userId: 'u123',
           title: 'Interstellar',
           releaseDate: '2014-11-05',
-          addedAt: DateTime(2026, 7, 1),
+          addedAt: '2026-07-01T00:00:00Z',
         ),
       ];
 
