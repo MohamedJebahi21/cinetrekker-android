@@ -73,13 +73,14 @@ void main() {
 
     test('builds Letterboxd watchlist CSV', () {
       final mockWatchlist = <UserMediaItem>[
-        const UserMediaItem(
+        UserMediaItem(
           id: '3',
           mediaId: 157336,
           mediaType: 'movie',
           userId: 'u123',
           title: 'Interstellar',
           releaseDate: '2014-11-05',
+          addedAt: DateTime(2026, 7, 1),
         ),
       ];
 

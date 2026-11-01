@@ -242,9 +242,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       try {
                         await exportService.exportAndShareJson(payload: payload);
                       } catch (error) {
-                        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('JSON export failed: $error')),
-                        );
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('JSON export failed: $error')),
+                          );
+                        }
                       }
                     },
                     icon: const Icon(Icons.share_rounded, size: 16),
@@ -253,10 +255,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   trailing: TextButton.icon(
                     onPressed: () async {
                       await Clipboard.setData(ClipboardData(text: jsonString));
-                      if (sheetCtx.mounted) Navigator.pop(sheetCtx);
-                      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('JSON copied to clipboard.')),
-                      );
+                      if (sheetCtx.mounted) {
+                        Navigator.pop(sheetCtx);
+                      }
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('JSON copied to clipboard.')),
+                        );
+                      }
                     },
                     icon: const Icon(Icons.copy_rounded, size: 16),
                     label: const Text('Copy'),
@@ -277,9 +283,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           watchlist: watchlist,
                         );
                       } catch (error) {
-                        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('CSV export failed: $error')),
-                        );
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('CSV export failed: $error')),
+                          );
+                        }
                       }
                     },
                     icon: const Icon(Icons.ios_share_rounded, size: 16),
@@ -292,9 +300,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
       );
     } catch (error) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not generate export: $error')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not generate export: $error')),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isExportingData = false);
     }
@@ -426,11 +436,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(session == null ? 'Local device data cleared.' : 'Your CineTrekker app data was deleted. Sign-in account remains active.'),
       ));
-      if (session != null) context.go('/auth');
+      if (session != null) {
+        context.go('/auth');
+      }
     } catch (error) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Deletion failed: $error')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Deletion failed: $error')),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isDeletingData = false);
     }
