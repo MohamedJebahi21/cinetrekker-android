@@ -48,13 +48,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     }
     return results;
   }
-  List<String> _recentSearches = [
-    'Oppenheimer',
-    'Interstellar',
-    'Dune',
-    'The Last of Us',
-    'Stranger Things',
-  ];
+  List<String> _recentSearches = [];
 
   @override
   void initState() {
@@ -296,9 +290,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Recent Searches (if input is empty)
+              // Recent Searches (if input is empty and has recent searches)
               if (_controller.text.trim().isEmpty) ...[
-                Row(
+                if (_recentSearches.isNotEmpty) ...[
+                  Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
@@ -351,7 +346,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                     );
                   }).toList(),
                 ),
-                const SizedBox(height: 20),
+                  const SizedBox(height: 20),
+                ],
 
                 // Mood & Quick Discovery Pills
                 Text(
@@ -756,3 +752,4 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     );
   }
 }
+
